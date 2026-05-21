@@ -163,7 +163,7 @@
     aimbot: { enabled: false, range: 16, smooth: 0.8, delay: 8, fov: 135, _last: 0 },
     clicker: { left: { enabled: false, iv: null }, right: { enabled: false, iv: null }, cpsMin: 14, cpsMax: 19 },
     movement: { bhop: false, bhopChance: 100 },
-    visuals: { esp: false, fps: false, xray: false, wasd: false },
+    visuals: { esp: false, fps: false, xray: false },
     viewmodel: { enabled: false, pos: { x: 0, y: 0, z: 0 }, rot: { x: 0, y: 0, z: 0 }, spin: false, spinSpeed: { x: 0, y: 2, z: 0 }, spinAngle: { x: 0, y: 0, z: 0 }, _lastTime: 0 },
     binds: { ka: 'KeyK', aim: '', lc: 'KeyR', rc: 'KeyF', bhop: 'KeyZ', esp: '', vm: '', menu: 'ShiftRight' }
   };
@@ -464,8 +464,7 @@
           <div class="ch-sec">
             <div class="ch-lbl">ESP</div>
             ${mkToggle('esp', 'Player ESP', 'esp')}
-            ${mkToggle('xray', 'Xray (beta)', '')}
-            ${mkToggle('wasd', 'WASD HUD', 'wasd')}
+            ${mkToggle('xray', 'Xray', '')}
             ${mkToggle('fps', 'FPS Counter', '')}
           </div>
           <div class="ch-sec">
@@ -547,46 +546,14 @@ safeAppend(fpsCounter)
         tg.classList.toggle('on', res);
       });
     };
-    
-    const wasdHud = document.createElement('div')
-
-wasdHud.id = 'ch-wasd'
-
-wasdHud.style.cssText = `
-position: fixed;
-bottom: 20px;
-right: 20px;
-display: none;
-gap: 6px;
-font-family: Inter,sans-serif;
-z-index: 99999;
-user-select: none;
-`
-
-wasdHud.innerHTML = `
-<div style="display:grid;grid-template-columns:40px 40px 40px;gap:4px;text-align:center;">
-  <div></div>
-  <div id="k-w" style="padding:8px;background:#222;border-radius:6px;">W</div>
-  <div></div>
-
-  <div id="k-a" style="padding:8px;background:#222;border-radius:6px;">A</div>
-  <div id="k-s" style="padding:8px;background:#222;border-radius:6px;">S</div>
-  <div id="k-d" style="padding:8px;background:#222;border-radius:6px;">D</div>
-</div>
-`
-
-safeAppend(wasdHud)
  
     bindToggle('ka', () => state.killaura.enabled = !state.killaura.enabled);
-bindToggle('aim', () => state.aimbot.enabled = !state.aimbot.enabled);
-bindToggle('lc', () => toggleClicker('left'));
-bindToggle('rc', () => toggleClicker('right'));
-bindToggle('xray', () => state.visuals.xray = !state.visuals.xray);
-bindToggle('bhop', () => state.movement.bhop = !state.movement.bhop);
-
-bindToggle('wasd', () => state.visuals.wasd = !state.visuals.wasd);
-
-bindToggle('fly', () => {
+    bindToggle('aim', () => state.aimbot.enabled = !state.aimbot.enabled);
+    bindToggle('lc', () => toggleClicker('left'));
+    bindToggle('rc', () => toggleClicker('right'));
+    bindToggle('xray', () => state.visuals.xray = !state.visuals.xray)
+    bindToggle('bhop', () => state.movement.bhop = !state.movement.bhop);
+    bindToggle('fly', () => {
     state.movement.fly = !state.movement.fly
 
     if (!state.movement.fly) {
@@ -601,8 +568,6 @@ bindToggle('fly', () => {
 
     return state.movement.fly
 })
-
-
     bindToggle('esp', () => state.visuals.esp = !state.visuals.esp);
     bindToggle('fps', () => state.visuals.fps = !state.visuals.fps);
     bindToggle('vm', () => state.viewmodel.enabled = !state.viewmodel.enabled);
@@ -839,7 +804,7 @@ bindToggle('fly', () => {
   function rafLoop(ts) {
   fpsFrames++
 
-  if (ts - fpsLast >= 1000) {
+if (ts - fpsLast >= 1000) {
     fpsValue = fpsFrames
     fpsFrames = 0
     fpsLast = ts
@@ -847,30 +812,9 @@ bindToggle('fly', () => {
     const el = document.getElementById('ch-fps')
 
     if (el) {
-      el.style.display = state.visuals.fps ? 'block' : 'none'
-      el.innerHTML = `FPS: ${fpsValue}`
+        el.style.display = state.visuals.fps ? 'block' : 'none'
+        el.innerHTML = `FPS: ${fpsValue}`
     }
-  }
-
-  const hud = document.getElementById('ch-wasd')
-
-  if (hud) {
-    hud.style.display = state.visuals.wasd ? 'block' : 'none'
-
-    const i = bloxd.noa?.inputs?.state
-
-    if (i) {
-      const w = document.getElementById('k-w')
-      const a = document.getElementById('k-a')
-      const s = document.getElementById('k-s')
-      const d = document.getElementById('k-d')
-
-      if (w) w.style.background = i.forward ? '#7c5cfc' : '#222'
-      if (a) a.style.background = i.left ? '#7c5cfc' : '#222'
-      if (s) s.style.background = i.backward ? '#7c5cfc' : '#222'
-      if (d) d.style.background = i.right ? '#7c5cfc' : '#222'
-    }
-  }
 }
     requestAnimationFrame(rafLoop);
     const dot = document.getElementById('st-dot');
@@ -1055,31 +999,24 @@ if (state.movement.fly && selfPos) {
     }
   }
  
-  let uiBuilt = false
-function initUI() {
-    if (uiBuilt) return
-    uiBuilt = true
-    buildUI()
-}
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initUI)
-} else {
-    initUI()
-}
-
-let coreStarted = false
-
-const poll = setInterval(() => {
-    if (!uiBuilt) initUI()
-
+  let uiBuilt = false;
+  function initUI() {
+    if (!uiBuilt) { uiBuilt = true; buildUI(); }
+  }
+ 
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initUI);
+  else initUI();
+ 
+  bloxd.init();
+ 
+  let coreStarted = false;
+  const poll = setInterval(() => {
+    if (!uiBuilt) initUI();
     if (window.noa && !coreStarted) {
-        coreStarted = true
-        bloxd.noa = window.noa
-
-        bloxd.init()
-
-        requestAnimationFrame(rafLoop)
-        clearInterval(poll)
+      coreStarted = true;
+      bloxd.noa = window.noa;
+      requestAnimationFrame(rafLoop);
+      clearInterval(poll);
     }
-}, 250)
+  }, 250);
+})();
