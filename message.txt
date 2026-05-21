@@ -1,21 +1,21 @@
 // ==UserScript==
-// @name         Click Helpe [bloxd io/bloxd/bloxd.io]
+// @name         Click Helper [bloxd io/bloxd/bloxd.io]
 // @namespace    https://bloxd.io
 // @icon         https://i.ibb.co/rfmXMwQz/Click-Helper-Icon.png
-
+ 
 // @version      1.5.1.8
-// @description  Auto Clicker (L/R), Custom CPS, Account Generator, Killaura, Aimbot, BHOP, ViewModel, Player ESP.
+// @description  Auto Clicker.
 // @author       MakeItOrBreakIt
 // @license      MIT
 // @match        *://*.bloxd.io/*
-
+ 
 // @match        *://*.bloxd.com/*
 // @match        *://*.bloxd.dev/*
 // @match        *://*.bloxdhop.io/*
 // @match        *://*.bloxdunblocked.*/*
 // @match        *://*.unbloxd.*/*
 // @match        *://*.playbloxd.com/*
-
+ 
 // @match        *://*.buildhub.*/*
 // @match        *://*.skillhub.vip/*
 // @match        *://*.classcraft.*/*
@@ -26,11 +26,9 @@
 // @match        *://*.buildminecreate.com/*
 // @match        *://*.iogamesunblocked.com/*
 // @match        *://*.unblockedgames.club/*
-
+ 
 // @grant        none
 // @run-at       document-start
-// @downloadURL https://update.greasyfork.org/scripts/531448/Click%20Helper%20%5Bbloxd%20iobloxdbloxdio%5D.user.js
-// @updateURL https://update.greasyfork.org/scripts/531448/Click%20Helper%20%5Bbloxd%20iobloxdbloxdio%5D.meta.js
 // ==/UserScript==
 /*
  * MIT License
@@ -41,14 +39,14 @@
   const attempt = (fn, fb = null) => { try { return fn(); } catch (_) { return fb; } };
   const vals = o => Object.values(o ?? {});
   const ks = o => Object.keys(o ?? {});
-
+ 
   const _call = Function.prototype.call;
-
+ 
   const bloxd = {
   noa: null,
   init() {
     let captured = false;
-
+ 
     Object.defineProperty(Function.prototype, 'call', {
       enumerable: false,
       configurable: true,
@@ -73,9 +71,9 @@
       });
     }
   };
-
+ 
   const _attackFnCache = new Map();
-
+ 
   const game = {
     _held: null,
     inGame() { return !!(bloxd.noa?.bloxd?.client?.msgHandler); },
@@ -159,25 +157,22 @@
       });
     }
   };
-
+ 
   const state = {
     killaura: { enabled: false, delay: 50, range: 6.7, jitter: 0.35, _last: 0 },
     aimbot: { enabled: false, range: 16, smooth: 0.8, delay: 8, fov: 135, _last: 0 },
     clicker: { left: { enabled: false, iv: null }, right: { enabled: false, iv: null }, cpsMin: 14, cpsMax: 19 },
     movement: { bhop: false, bhopChance: 100 },
-    visuals: { esp: false, fps: false },
+    visuals: { esp: false, fps: false, xray: false },
     viewmodel: { enabled: false, pos: { x: 0, y: 0, z: 0 }, rot: { x: 0, y: 0, z: 0 }, spin: false, spinSpeed: { x: 0, y: 2, z: 0 }, spinAngle: { x: 0, y: 0, z: 0 }, _lastTime: 0 },
     binds: { ka: 'KeyK', aim: '', lc: 'KeyR', rc: 'KeyF', bhop: 'KeyZ', esp: '', vm: '', menu: 'ShiftRight' }
   };
-  
-let lastFpsTime = performance.now()
-let fps = 0
-
+ 
   let savedBinds = {};
   const bindsStr = localStorage.getItem('clickHelper-keybinds');
   if (bindsStr) { try { savedBinds = JSON.parse(bindsStr); } catch (_) {} }
   Object.assign(state.binds, savedBinds);
-
+ 
   let savedSettings = {};
   const settingsStr = localStorage.getItem('clickHelper-settings');
   if (settingsStr) { try { savedSettings = JSON.parse(settingsStr); } catch (_) {} }
@@ -193,7 +188,7 @@ let fps = 0
     if (savedSettings.viewmodel.rot) Object.assign(state.viewmodel.rot, savedSettings.viewmodel.rot);
     if (savedSettings.viewmodel.spinSpeed) Object.assign(state.viewmodel.spinSpeed, savedSettings.viewmodel.spinSpeed);
   }
-
+ 
   function saveBinds() { localStorage.setItem('clickHelper-keybinds', JSON.stringify(state.binds)); }
   function saveSettings() {
     const settings = {
@@ -210,7 +205,7 @@ let fps = 0
     clearTimeout(saveTimeout);
     saveTimeout = setTimeout(() => { saveBinds(); saveSettings(); }, 300);
   }
-
+ 
   function toggleClicker(side) {
     const s = state.clicker[side];
     const action = side === 'left' ? 'primary-fire' : 'alt-fire';
@@ -228,7 +223,7 @@ let fps = 0
     }
     return s.enabled;
   }
-
+ 
   function clearAndReload() {
     document.cookie.split(';').forEach(c => {
       const n = c.split('=')[0].trim();
@@ -239,7 +234,7 @@ let fps = 0
     sessionStorage.clear();
     location.reload();
   }
-
+ 
   function bindDisplay(code) {
     if (!code) return '—';
     return code.replace('Key', '').replace('Digit', '').replace('ShiftRight', 'RS').replace('ShiftLeft', 'LS')
@@ -249,7 +244,7 @@ let fps = 0
       .replace('Slash', '/').replace('Minus', '-').replace('Equal', '=').replace('Space', 'SPC')
       .replace('Tab', 'TAB').replace('CapsLock', 'CAPS').replace('Enter', 'ENT').replace('Escape', 'ESC').replace('Arrow', '');
   }
-
+ 
   function safeAppend(el) {
     if (document.body) return document.body.appendChild(el);
     const observer = new MutationObserver(() => {
@@ -257,10 +252,10 @@ let fps = 0
     });
     observer.observe(document.documentElement, { childList: true });
   }
-
+ 
   function buildUI() {
     if (document.getElementById('ch-root')) return;
-
+ 
     const css = document.createElement('style');
     css.textContent = `
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -289,7 +284,7 @@ let fps = 0
       .ch-hbtn { background: rgba(255,255,255,0.2); border: none; color: #fff; font-size: 12px; cursor: pointer; padding: 2px 8px; border-radius: 4px; transition: 0.2s; display: flex; align-items: center; justify-content: center; width: 28px; height: 24px; }
       .ch-hbtn:hover { background: rgba(255,255,255,0.4); }
       .ch-hbtn i { font-size: 13px; }
-
+ 
       /* === TABS === */
       #ch-tabs { display: flex; background: rgba(0,0,0,0.25); border-bottom: 1px solid var(--ghost-panel-border); padding: 0; margin: 0; gap: 0; }
       .ch-tab { flex: 1; padding: 10px 0 9px 0; text-align: center; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--ghost-text-dim); cursor: pointer; transition: color 0.2s, background 0.2s, box-shadow 0.2s; position: relative; border: none; background: transparent; outline: none; font-family: 'Inter', sans-serif; }
@@ -297,11 +292,11 @@ let fps = 0
       .ch-tab.active { color: #fff; }
       .ch-tab.active::after { content: ''; position: absolute; bottom: 0; left: 15%; right: 15%; height: 2.5px; background: linear-gradient(90deg, var(--ghost-accent-1), var(--ghost-accent-2)); border-radius: 2px 2px 0 0; box-shadow: 0 0 8px rgba(124,92,252,0.5); }
       .ch-tab i { margin-right: 5px; font-size: 12px; }
-
+ 
       /* === TAB PANELS === */
       .ch-tab-panel { display: none; flex-direction: column; gap: 8px; }
       .ch-tab-panel.active { display: flex; }
-
+ 
       #ch-body { padding: 10px; display: flex; flex-direction: column; gap: 8px; max-height: calc(100vh - 120px); overflow-y: auto; }
       #ch-body::-webkit-scrollbar { width: 4px; }
       #ch-body::-webkit-scrollbar-thumb { background: var(--ghost-accent-1); border-radius: 4px; }
@@ -358,14 +353,14 @@ let fps = 0
 		   transition: 0.2s !important;
 		   box-shadow: none !important;
 	  }
-
+ 
 	  #ch-root input[type="text"]:focus,
 	  #ch-root input[type="number"]:focus,
 	  #ch-root textarea:focus {
 		   border-color: var(--ghost-accent-1) !important;
 		   box-shadow: 0 0 8px rgba(124,92,252,0.2) !important;
 	  }
-
+ 
 	  #ch-root input::placeholder,
 	  #ch-root textarea::placeholder {
 		   color: var(--ghost-text-dim) !important;
@@ -373,7 +368,7 @@ let fps = 0
 	  }
     `;
     document.head.appendChild(css);
-
+ 
     const mkToggle = (id, name, bindKey) => {
       const disp = bindDisplay(state.binds[bindKey]);
       const hasKey = !!state.binds[bindKey];
@@ -392,22 +387,22 @@ let fps = 0
           </div>` : ''}
         </div>`;
     };
-
+ 
     const mkSlider = (id, label, min, max, val, step = '1') =>
       `<div class="sl-row">
         <span class="sl-label">${label}</span>
         <input type="range" id="${id}" min="${min}" max="${max}" value="${val}" step="${step}">
         <input type="number" class="sl-val-inp" id="${id}-v" value="${val}" step="${step}" min="${min}" max="${max}">
       </div>`;
-
+ 
     const mkTextInput = (id, placeholder, value = '') =>
       `<input type="text" class="ch-text-inp" id="${id}" placeholder="${placeholder}" value="${value}">`;
-
+ 
     const root = document.createElement('div');
     root.id = 'ch-root';
     root.innerHTML = `
       <div id="ch-hdr">
-        <span id="ch-title">CLICK HELPER <span>v1.5.1.8</span></span>
+        <span id="ch-title">click helper v2 <span>v1.5.1.9</span></span>
         <div style="display:flex;gap:5px;">
           <button class="ch-hbtn" id="ch-gen" title="New Account" style="background: rgba(255,68,102,0.3); color: #ff8899;"><i class="fa-solid fa-user"></i></button>
           <button class="ch-hbtn" id="ch-inject" title="Re-Inject"><i class="fa-solid fa-syringe"></i></button>
@@ -451,24 +446,26 @@ let fps = 0
             </div>
           </div>
         </div>
-
+ 
         <!-- MOVEMENT TAB -->
         <div class="ch-tab-panel" data-panel="movement">
           <div class="ch-sec">
             <div class="ch-lbl">Movement</div>
             ${mkToggle('bhop', 'BHOP', 'bhop')}
-            ${mkToggle('fps', 'FPS Counter', 'fps')}
+            ${mkToggle('fly', 'Fly (beta)', '')}
             <div style="margin-top: 4px;">
               ${mkSlider('bhop-chance', '%', 1, 100, state.movement.bhopChance)}
             </div>
           </div>
         </div>
-
+ 
         <!-- VISUALS TAB -->
         <div class="ch-tab-panel" data-panel="visuals">
           <div class="ch-sec">
             <div class="ch-lbl">ESP</div>
             ${mkToggle('esp', 'Player ESP', 'esp')}
+            ${mkToggle('xray', 'Xray', '')}
+            ${mkToggle('fps', 'FPS Counter', '')}
           </div>
           <div class="ch-sec">
             <div class="ch-lbl">ViewModel</div>
@@ -493,12 +490,37 @@ let fps = 0
       <div id="ch-status">
         <span><span class="dot red" id="st-dot"></span><span id="st-txt">Waiting for game</span></span>
         <span style="opacity:0.6">RSHIFT = MENU</span>
-<span id="ch-fps" style="margin-left:10px; display:none;">FPS: 0</span>
       </div>
     `;
-
+ 
     safeAppend(root);
+    const fpsCounter = document.createElement('div')
 
+fpsCounter.id = 'ch-fps'
+
+fpsCounter.style.cssText = `
+position: fixed;
+top: 20px;
+right: 20px;
+padding: 7px 12px;
+background: rgba(18,18,24,0.92);
+border: 1px solid rgba(255,255,255,0.06);
+border-radius: 10px;
+font-family: Inter,sans-serif;
+font-size: 12px;
+font-weight: 700;
+color: #7c5cfc;
+z-index: 99999;
+display: none;
+backdrop-filter: blur(14px);
+box-shadow: 0 10px 25px rgba(0,0,0,0.45);
+user-select: none;
+`
+
+fpsCounter.innerHTML = 'FPS: 0'
+
+safeAppend(fpsCounter)
+ 
     // === TAB SWITCHING ===
     const tabs = root.querySelectorAll('.ch-tab');
     const panels = root.querySelectorAll('.ch-tab-panel');
@@ -512,7 +534,7 @@ let fps = 0
         if (panel) panel.classList.add('active');
       });
     });
-
+ 
     // === BINDINGS ===
     const bindToggle = (id, onChange) => {
       const row = document.getElementById(`row-${id}`);
@@ -524,16 +546,33 @@ let fps = 0
         tg.classList.toggle('on', res);
       });
     };
-
+ 
     bindToggle('ka', () => state.killaura.enabled = !state.killaura.enabled);
     bindToggle('aim', () => state.aimbot.enabled = !state.aimbot.enabled);
     bindToggle('lc', () => toggleClicker('left'));
     bindToggle('rc', () => toggleClicker('right'));
+    bindToggle('xray', () => state.visuals.xray = !state.visuals.xray)
     bindToggle('bhop', () => state.movement.bhop = !state.movement.bhop);
+    bindToggle('fly', () => {
+    state.movement.fly = !state.movement.fly
+
+    if (!state.movement.fly) {
+        const mov = game.getMovement(1)
+
+        if (mov?.velocity) {
+            mov.velocity[0] = 0
+            mov.velocity[1] = 0
+            mov.velocity[2] = 0
+        }
+    }
+
+    return state.movement.fly
+})
     bindToggle('esp', () => state.visuals.esp = !state.visuals.esp);
+    bindToggle('fps', () => state.visuals.fps = !state.visuals.fps);
     bindToggle('vm', () => state.viewmodel.enabled = !state.viewmodel.enabled);
     bindToggle('spin', () => state.viewmodel.spin = !state.viewmodel.spin);
-
+ 
     let listeningBind = null;
     root.addEventListener('click', e => {
       const unbindEl = e.target.closest('[data-unbind]');
@@ -565,26 +604,62 @@ let fps = 0
       kbEl.classList.add('listening');
       kbEl.querySelector('.kb-text').innerText = '…';
     });
-
+ 
     const toggleUiById = (id) => {
-      const tg = document.getElementById(`tg-${id}`);
-      if (!tg) return;
-      let res = false;
-      switch (id) {
-        case 'ka': res = (state.killaura.enabled = !state.killaura.enabled); break;
-        case 'aim': res = (state.aimbot.enabled = !state.aimbot.enabled); break;
-        case 'lc': res = toggleClicker('left'); break;
-        case 'rc': res = toggleClicker('right'); break;
-        case 'bhop': res = (state.movement.bhop = !state.movement.bhop); break;
-        case 'esp': res = (state.visuals.esp = !state.visuals.esp); break;
-        case 'vm': res = (state.viewmodel.enabled = !state.viewmodel.enabled); break;
-      }
-      tg.classList.toggle('on', res);
-    };
+    const tg = document.getElementById(`tg-${id}`);
+    if (!tg) return;
 
+    let res = false;
+
+    switch (id) {
+        case 'ka':
+            res = (state.killaura.enabled = !state.killaura.enabled)
+        break
+
+        case 'aim':
+            res = (state.aimbot.enabled = !state.aimbot.enabled)
+        break
+
+        case 'lc':
+            res = toggleClicker('left')
+        break
+
+        case 'rc':
+            res = toggleClicker('right')
+        break
+
+        case 'bhop':
+            res = (state.movement.bhop = !state.movement.bhop)
+        break
+
+        case 'fly':
+            res = (state.movement.fly = !state.movement.fly)
+        break
+
+        case 'esp':
+            res = (state.visuals.esp = !state.visuals.esp)
+        break
+
+        case 'xray':
+            res = (state.visuals.xray = !state.visuals.xray)
+        break
+
+        case 'fps':
+            res = (state.visuals.fps = !state.visuals.fps)
+        break
+
+        case 'vm':
+            res = (state.viewmodel.enabled = !state.viewmodel.enabled)
+        break
+    }
+
+    tg.classList.toggle('on', res);
+    return res;
+}
+ 
     const preventInput = () => attempt(() => { if (bloxd.noa?.inputs) bloxd.noa.inputs._paused = true; });
     const restoreInput = () => attempt(() => { if (bloxd.noa?.inputs) bloxd.noa.inputs._paused = false; });
-
+ 
     const bindInp = (id, obj, key) => {
       const el = document.getElementById(id);
       if (!el) return;
@@ -595,7 +670,7 @@ let fps = 0
     };
     bindInp('inp-cmin', state.clicker, 'cpsMin');
     bindInp('inp-cmax', state.clicker, 'cpsMax');
-
+ 
     const bindSlider = (id, cb) => {
       const range = document.getElementById(id);
       const num = document.getElementById(id + '-v');
@@ -611,7 +686,7 @@ let fps = 0
       num.addEventListener('blur', restoreInput);
       num.addEventListener('keydown', e => e.stopPropagation(), true);
     };
-
+ 
     bindSlider('ka-delay', v => state.killaura.delay = Math.max(0, Math.floor(v)));
     bindSlider('ka-range', v => state.killaura.range = v);
     bindSlider('ka-jitter', v => state.killaura.jitter = v);
@@ -620,7 +695,6 @@ let fps = 0
     bindSlider('aim-delay', v => state.aimbot.delay = v);
     bindSlider('aim-fov', v => state.aimbot.fov = v);
     bindSlider('bhop-chance', v => state.movement.bhopChance = v);
-    bindToggle('fps', () => state.visuals.fps = !state.visuals.fps)
     bindSlider('vm-px', v => state.viewmodel.pos.x = v);
     bindSlider('vm-py', v => state.viewmodel.pos.y = v);
     bindSlider('vm-pz', v => state.viewmodel.pos.z = v);
@@ -630,25 +704,25 @@ let fps = 0
     bindSlider('spin-sx', v => state.viewmodel.spinSpeed.x = v);
     bindSlider('spin-sy', v => state.viewmodel.spinSpeed.y = v);
     bindSlider('spin-sz', v => state.viewmodel.spinSpeed.z = v);
-
+ 
     // Bind all text inputs to pause game input on focus
     root.querySelectorAll('.ch-text-inp').forEach(el => {
       el.addEventListener('focus', preventInput);
       el.addEventListener('blur', restoreInput);
       el.addEventListener('keydown', e => e.stopPropagation(), true);
     });
-
+ 
     document.getElementById('ch-gen').addEventListener('click', () => {
       if (confirm("Are you sure you want to clear cookies/local storage and generate a new account?")) clearAndReload();
     });
-
+ 
     document.getElementById('ch-inject').addEventListener('click', () => bloxd.init());
-
+ 
     let mini = false, visible = true;
     document.getElementById('ch-min').addEventListener('click', () => {
       mini = !mini; root.classList.toggle('mini', mini);
     });
-
+ 
     document.addEventListener('keydown', e => {
       if (listeningBind) {
         e.preventDefault(); e.stopPropagation();
@@ -683,7 +757,7 @@ let fps = 0
         if (id !== 'menu' && key && e.code === key) toggleUiById(id);
       }
     }, true);
-
+ 
     const hdr = document.getElementById('ch-hdr');
     hdr.addEventListener('mousedown', e => {
       if (e.target !== hdr && e.target.id !== 'ch-title' && !e.target.closest('#ch-title')) return;
@@ -692,53 +766,62 @@ let fps = 0
       const rect = root.getBoundingClientRect();
       const offsetX = e.clientX - rect.left;
       const offsetY = e.clientY - rect.top;
-
+ 
       const move = ev => {
         const winW = window.innerWidth;
         const winH = window.innerHeight;
         
         let newLeft = ev.clientX - offsetX;
         let newTop = ev.clientY - offsetY;
-
+ 
         if (newLeft < 0) newLeft = 0;
         else if (newLeft + rect.width > winW) newLeft = winW - rect.width;
-
+ 
         if (newTop < 0) newTop = 0;
         else if (newTop + rect.height > winH) newTop = winH - rect.height;
-
+ 
         root.style.left = newLeft + 'px';
         root.style.top = newTop + 'px';
         root.style.right = 'unset';
       };
-
+ 
       const up = () => {
         document.removeEventListener('mousemove', move);
         document.removeEventListener('mouseup', up);
         hdr.style.cursor = 'grab';
       };
-
+ 
       document.addEventListener('mousemove', move);
       document.addEventListener('mouseup', up);
       hdr.style.cursor = 'grabbing';
     });
   }
-
+ 
   let inGame = false;
+  let fpsFrames = 0
+  let fpsLast = performance.now()
+  let fpsValue = 0
   function rafLoop(ts) {
-  requestAnimationFrame(rafLoop);
+  fpsFrames++
 
-const delta = now - lastFpsTime;
-fps = delta > 0 ? Math.round(1000 / delta) : fps;
-lastFpsTime = now;
+if (ts - fpsLast >= 1000) {
+    fpsValue = fpsFrames
+    fpsFrames = 0
+    fpsLast = ts
 
-const el = document.getElementById('ch-fps');
-if (el) {
-  el.style.display = state.visuals.fps ? 'block' : 'none';
-  el.innerText = `FPS: ${fps}`;
+    const el = document.getElementById('ch-fps')
+
+    if (el) {
+        el.style.display = state.visuals.fps ? 'block' : 'none'
+        el.innerHTML = `FPS: ${fpsValue}`
+    }
 }
-
-  game.updateESP(state.visuals.esp, performance.now());
-
+    requestAnimationFrame(rafLoop);
+    const dot = document.getElementById('st-dot');
+    const txt = document.getElementById('st-txt');
+ 
+    game.updateESP(state.visuals.esp);
+ 
     const nowInGame = game.inGame();
     if (nowInGame !== inGame) {
       inGame = nowInGame;
@@ -747,14 +830,12 @@ if (el) {
         else { dot.className = 'dot red'; txt.innerText = 'Waiting for game'; }
       }
     }
-
-
     if (!inGame) return;
-
+ 
     const playerIds = vals(game.getIds());
     const selfPos = game.getPos(1);
     const cam = bloxd.noa?.camera;
-
+ 
     // Killaura
     if (state.killaura.enabled && Date.now() - state.killaura._last >= state.killaura.delay) {
       if (selfPos) {
@@ -771,7 +852,7 @@ if (el) {
         }
       }
     }
-
+ 
     // Aimbot
     if (state.aimbot.enabled && Date.now() - state.aimbot._last >= state.aimbot.delay) {
       if (selfPos && cam) {
@@ -786,7 +867,7 @@ if (el) {
           
           const dx = p[0] - selfPos[0], dy = p[1] - selfPos[1], dz = p[2] - selfPos[2];
           const dSq = dx * dx + dy * dy + dz * dz;
-
+ 
           if (dSq < minDistSq) {
             // --- FOV CHECK START ---
             const targetYaw = Math.atan2(dx, dz);
@@ -814,39 +895,101 @@ if (el) {
         }
       }
     };
-
+ 
     // BHOP
-    const inputs = bloxd.noa?.inputs?.state;
-    const mov = game.getMovement(1);
-    if (state.movement.bhop && inputs && mov) {
-      const isMoving = inputs.forward || inputs.backward || inputs.left || inputs.right;
-      const onGround = attempt(() => mov.isOnGround());
-      if (onGround && isMoving && Math.random() * 100 <= state.movement.bhopChance) {
-        inputs.jump = true;
-      } else {
-        inputs.jump = false;
-      }
-    }
+const inputs = bloxd.noa?.inputs?.state;
+const mov = game.getMovement(1);
 
+if (state.movement.bhop && inputs && mov) {
+    const isMoving = inputs.forward || inputs.backward || inputs.left || inputs.right;
+    const onGround = attempt(() => mov.isOnGround());
+
+    if (onGround && isMoving && Math.random() * 100 <= state.movement.bhopChance) {
+        inputs.jump = true;
+    } else {
+        inputs.jump = false;
+    }
+}
+
+if (state.movement.fly) {
+    inputs.jump = false;
+}
+ 
+ // Fly
+if (state.movement.fly && selfPos) {
+    const speed = 0.22
+
+    const cam = bloxd.noa?.camera
+    const inputs = bloxd.noa?.inputs?.state
+    const movement = game.getMovement(1)
+
+    if (cam && inputs && movement) {
+        let mx = 0
+        let my = 0
+        let mz = 0
+
+        const yaw = cam.heading
+
+        if (inputs.forward) {
+            mx += Math.sin(yaw) * speed
+            mz += Math.cos(yaw) * speed
+        }
+
+        if (inputs.backward) {
+            mx -= Math.sin(yaw) * speed
+            mz -= Math.cos(yaw) * speed
+        }
+
+        if (inputs.left) {
+            mx += Math.sin(yaw - Math.PI / 2) * speed
+            mz += Math.cos(yaw - Math.PI / 2) * speed
+        }
+
+        if (inputs.right) {
+            mx += Math.sin(yaw + Math.PI / 2) * speed
+            mz += Math.cos(yaw + Math.PI / 2) * speed
+        }
+
+        if (inputs.jump) {
+            my += speed
+        }
+
+        if (inputs.shift) {
+            my -= speed
+        }
+
+        attempt(() => {
+            movement.velocity[0] = 0
+            movement.velocity[1] = 0
+            movement.velocity[2] = 0
+
+            bloxd.noa.entities.setPosition(1, [
+                selfPos[0] + mx,
+                selfPos[1] + my,
+                selfPos[2] + mz
+            ])
+        })
+    }
+}
     // ViewModel
     if (state.viewmodel.enabled) {
       const item = game.getHeld(1);
       if (item) {
         const vdt = state.viewmodel._lastTime ? (ts - state.viewmodel._lastTime) / 1000 : 0;
         state.viewmodel._lastTime = ts;
-
+ 
         if (state.viewmodel.spin && item?.typeObj?.constructor?.name === "Tool") {
           state.viewmodel.spinAngle.x += state.viewmodel.spinSpeed.x * vdt;
           state.viewmodel.spinAngle.y += state.viewmodel.spinSpeed.y * vdt;
           state.viewmodel.spinAngle.z += state.viewmodel.spinSpeed.z * vdt;
         }
-
+ 
         if (item.firstPersonPosOffset) {
           item.firstPersonPosOffset.x = state.viewmodel.pos.x;
           item.firstPersonPosOffset.y = state.viewmodel.pos.y;
           item.firstPersonPosOffset.z = state.viewmodel.pos.z;
         }
-
+ 
         if (item.firstPersonRotation && item?.typeObj?.constructor?.name === "Tool") {
           item.firstPersonRotation.x = state.viewmodel.rot.x + (state.viewmodel.spin ? state.viewmodel.spinAngle.x : 0);
           item.firstPersonRotation.y = state.viewmodel.rot.y + (state.viewmodel.spin ? state.viewmodel.spinAngle.y : 0);
@@ -855,17 +998,17 @@ if (el) {
       }
     }
   }
-
+ 
   let uiBuilt = false;
   function initUI() {
     if (!uiBuilt) { uiBuilt = true; buildUI(); }
   }
-
+ 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initUI);
   else initUI();
-
+ 
   bloxd.init();
-
+ 
   let coreStarted = false;
   const poll = setInterval(() => {
     if (!uiBuilt) initUI();
