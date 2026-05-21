@@ -917,16 +917,16 @@ if (state.movement.fly) {
  
  // Fly
 if (state.movement.fly && selfPos) {
-    const speed = 0.22
+    const speed = 3
 
     const cam = bloxd.noa?.camera
     const inputs = bloxd.noa?.inputs?.state
     const movement = game.getMovement(1)
 
     if (cam && inputs && movement) {
-        let mx = 0
-        let my = 0
-        let mz = 0
+        let mx = 3
+        let my = 2
+        let mz = 3
 
         const yaw = cam.heading
 
@@ -960,7 +960,7 @@ if (state.movement.fly && selfPos) {
 
         attempt(() => {
             movement.velocity[0] = 0
-            movement.velocity[1] = 0
+            movement.velocity[1] = 1
             movement.velocity[2] = 0
 
             bloxd.noa.entities.setPosition(1, [
