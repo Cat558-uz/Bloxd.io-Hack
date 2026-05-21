@@ -587,8 +587,7 @@ bindToggle('bhop', () => state.movement.bhop = !state.movement.bhop);
 bindToggle('wasd', () => state.visuals.wasd = !state.visuals.wasd);
 
 bindToggle('fly', () => {
-    state.movement.fly = !state.movement.fly;
-});
+    state.movement.fly = !state.movement.fly
 
     if (!state.movement.fly) {
         const mov = game.getMovement(1)
