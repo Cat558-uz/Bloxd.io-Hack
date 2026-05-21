@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         Click Helper [bloxd io/bloxd/bloxd.io]
+// @name         Click Helpe [bloxd io/bloxd/bloxd.io]
 // @namespace    https://bloxd.io
 // @icon         https://i.ibb.co/rfmXMwQz/Click-Helper-Icon.png
 
