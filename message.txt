@@ -165,10 +165,13 @@
     aimbot: { enabled: false, range: 16, smooth: 0.8, delay: 8, fov: 135, _last: 0 },
     clicker: { left: { enabled: false, iv: null }, right: { enabled: false, iv: null }, cpsMin: 14, cpsMax: 19 },
     movement: { bhop: false, bhopChance: 100 },
-    visuals: { esp: false },
+    visuals: { esp: false, fps: false },
     viewmodel: { enabled: false, pos: { x: 0, y: 0, z: 0 }, rot: { x: 0, y: 0, z: 0 }, spin: false, spinSpeed: { x: 0, y: 2, z: 0 }, spinAngle: { x: 0, y: 0, z: 0 }, _lastTime: 0 },
     binds: { ka: 'KeyK', aim: '', lc: 'KeyR', rc: 'KeyF', bhop: 'KeyZ', esp: '', vm: '', menu: 'ShiftRight' }
   };
+  
+let lastFpsTime = performance.now()
+let fps = 0
 
   let savedBinds = {};
   const bindsStr = localStorage.getItem('clickHelper-keybinds');
@@ -454,6 +457,7 @@
           <div class="ch-sec">
             <div class="ch-lbl">Movement</div>
             ${mkToggle('bhop', 'BHOP', 'bhop')}
+            ${mkToggle('fps', 'FPS Counter', 'fps')}
             <div style="margin-top: 4px;">
               ${mkSlider('bhop-chance', '%', 1, 100, state.movement.bhopChance)}
             </div>
@@ -615,6 +619,7 @@
     bindSlider('aim-delay', v => state.aimbot.delay = v);
     bindSlider('aim-fov', v => state.aimbot.fov = v);
     bindSlider('bhop-chance', v => state.movement.bhopChance = v);
+    bindToggle('fps', () => state.visuals.fps = !state.visuals.fps)
     bindSlider('vm-px', v => state.viewmodel.pos.x = v);
     bindSlider('vm-py', v => state.viewmodel.pos.y = v);
     bindSlider('vm-pz', v => state.viewmodel.pos.z = v);
@@ -719,11 +724,16 @@
 
   let inGame = false;
   function rafLoop(ts) {
-    requestAnimationFrame(rafLoop);
-    const dot = document.getElementById('st-dot');
-    const txt = document.getElementById('st-txt');
+  requestAnimationFrame(rafLoop);
 
-    game.updateESP(state.visuals.esp);
+  const now = performance.now()
+  fps = Math.round(1000 / (now - lastFpsTime))
+  lastFpsTime = now
+
+  const dot = document.getElementById('st-dot');
+  const txt = document.getElementById('st-txt');
+
+  game.updateESP(state.visuals.esp, performance.now());
 
     const nowInGame = game.inGame();
     if (nowInGame !== inGame) {
@@ -733,6 +743,14 @@
         else { dot.className = 'dot red'; txt.innerText = 'Waiting for game'; }
       }
     }
+
+    // AQUI (FPS update)
+    const el = document.getElementById('ch-fps')
+    if (el) {
+      el.style.display = state.visuals.fps ? 'block' : 'none'
+      el.innerText = `FPS: ${fps}`
+    }
+
     if (!inGame) return;
 
     const playerIds = vals(game.getIds());
