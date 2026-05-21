@@ -493,6 +493,7 @@ let fps = 0
       <div id="ch-status">
         <span><span class="dot red" id="st-dot"></span><span id="st-txt">Waiting for game</span></span>
         <span style="opacity:0.6">RSHIFT = MENU</span>
+<span id="ch-fps" style="margin-left:10px; display:none;">FPS: 0</span>
       </div>
     `;
 
@@ -726,12 +727,15 @@ let fps = 0
   function rafLoop(ts) {
   requestAnimationFrame(rafLoop);
 
-  const now = performance.now()
-  fps = Math.round(1000 / (now - lastFpsTime))
-  lastFpsTime = now
+const delta = now - lastFpsTime;
+fps = delta > 0 ? Math.round(1000 / delta) : fps;
+lastFpsTime = now;
 
-  const dot = document.getElementById('st-dot');
-  const txt = document.getElementById('st-txt');
+const el = document.getElementById('ch-fps');
+if (el) {
+  el.style.display = state.visuals.fps ? 'block' : 'none';
+  el.innerText = `FPS: ${fps}`;
+}
 
   game.updateESP(state.visuals.esp, performance.now());
 
