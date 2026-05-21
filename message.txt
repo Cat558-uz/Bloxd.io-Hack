@@ -602,6 +602,7 @@ bindToggle('fly', () => {
 
     return state.movement.fly
 })
+
     bindToggle('esp', () => state.visuals.esp = !state.visuals.esp);
     bindToggle('fps', () => state.visuals.fps = !state.visuals.fps);
     bindToggle('vm', () => state.viewmodel.enabled = !state.viewmodel.enabled);
