@@ -165,7 +165,19 @@
     movement: { bhop: false, bhopChance: 100 },
     visuals: { esp: false, fps: false, xray: false },
     viewmodel: { enabled: false, pos: { x: 0, y: 0, z: 0 }, rot: { x: 0, y: 0, z: 0 }, spin: false, spinSpeed: { x: 0, y: 2, z: 0 }, spinAngle: { x: 0, y: 0, z: 0 }, _lastTime: 0 },
-    binds: { ka: 'KeyK', aim: '', lc: 'KeyR', rc: 'KeyF', bhop: 'KeyZ', esp: '', vm: '', menu: 'ShiftRight' }
+    binds: {
+    ka: 'KeyK',
+    aim: '',
+    lc: 'KeyR',
+    rc: 'KeyF',
+    bhop: 'KeyZ',
+    esp: '',
+    vm: '',
+    menu: 'ShiftRight'
+},
+ui: {
+    scale: 1
+}
   };
  
   let savedBinds = {};
@@ -182,21 +194,49 @@
     state.clicker.cpsMin = savedSettings.clicker.cpsMin ?? state.clicker.cpsMin;
     state.clicker.cpsMax = savedSettings.clicker.cpsMax ?? state.clicker.cpsMax;
   }
-  if (savedSettings.movement) state.movement.bhopChance = savedSettings.movement.bhopChance ?? state.movement.bhopChance;
   if (savedSettings.viewmodel) {
-    if (savedSettings.viewmodel.pos) Object.assign(state.viewmodel.pos, savedSettings.viewmodel.pos);
-    if (savedSettings.viewmodel.rot) Object.assign(state.viewmodel.rot, savedSettings.viewmodel.rot);
-    if (savedSettings.viewmodel.spinSpeed) Object.assign(state.viewmodel.spinSpeed, savedSettings.viewmodel.spinSpeed);
-  }
+    if (savedSettings.viewmodel.pos) Object.assign(state.viewmodel.pos, savedSettings.viewmodel.pos)
+    if (savedSettings.viewmodel.rot) Object.assign(state.viewmodel.rot, savedSettings.viewmodel.rot)
+    if (savedSettings.viewmodel.spinSpeed) Object.assign(state.viewmodel.spinSpeed, savedSettings.viewmodel.spinSpeed)
+}
+
+if (savedSettings.ui) {
+    state.ui.scale = savedSettings.ui.scale ?? 1
+}
  
   function saveBinds() { localStorage.setItem('clickHelper-keybinds', JSON.stringify(state.binds)); }
   function saveSettings() {
     const settings = {
-      killaura: { delay: state.killaura.delay, range: state.killaura.range, jitter: state.killaura.jitter },
-      aimbot: { range: state.aimbot.range, smooth: state.aimbot.smooth, delay: state.aimbot.delay },
-      clicker: { cpsMin: state.clicker.cpsMin, cpsMax: state.clicker.cpsMax },
-      movement: { bhopChance: state.movement.bhopChance },
-      viewmodel: { pos: state.viewmodel.pos, rot: state.viewmodel.rot, spinSpeed: state.viewmodel.spinSpeed }
+        killaura: {
+            delay: state.killaura.delay,
+            range: state.killaura.range,
+            jitter: state.killaura.jitter
+        },
+
+        aimbot: {
+            range: state.aimbot.range,
+            smooth: state.aimbot.smooth,
+            delay: state.aimbot.delay
+        },
+
+        clicker: {
+            cpsMin: state.clicker.cpsMin,
+            cpsMax: state.clicker.cpsMax
+        },
+
+        movement: {
+            bhopChance: state.movement.bhopChance
+        },
+
+        viewmodel: {
+            pos: state.viewmodel.pos,
+            rot: state.viewmodel.rot,
+            spinSpeed: state.viewmodel.spinSpeed
+        },
+
+        ui: {
+            scale: state.ui.scale
+        }
     };
     localStorage.setItem('clickHelper-settings', JSON.stringify(settings));
   }
@@ -396,6 +436,17 @@
       </div>`;
  
     const mkTextInput = (id, placeholder, value = '') =>
+  `<input type="text" class="ch-text-inp" id="${id}" placeholder="${placeholder}" value="${value}">`;
+
+const mkSelect = (id, options, current) => `
+<select id="${id}" class="ch-text-inp">
+    ${options.map(v => `
+        <option value="${v}" ${v === current ? 'selected' : ''}>
+            ${bindDisplay(v)}
+        </option>
+    `).join('')}
+</select>
+`;
       `<input type="text" class="ch-text-inp" id="${id}" placeholder="${placeholder}" value="${value}">`;
  
     const root = document.createElement('div');
