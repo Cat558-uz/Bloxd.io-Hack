@@ -136,60 +136,34 @@
         (down ? inp.down : inp.up)._events?.[action]?.(0);
       });
     },
-    updateESP(enabled, now) {
-      if (!this._espCache) this._espCache = { lastUpdate: 0, interval: 100 };
-      if (now - this._espCache.lastUpdate < this._espCache.interval) return;
-      this._espCache.lastUpdate = now;
-      
-      attempt(() => {
-        if (!bloxd.noa) return;
-        const r = vals(bloxd.noa)[12];
-        if (!r) return;
-        const tm = vals(r).find(v => v?.thinMeshes)?.thinMeshes;
-        if (Array.isArray(tm)) {
-          tm.forEach(i => {
-            const m = i?.meshVariations?.__DEFAULT__?.mesh;
-            if (m && typeof m.renderingGroupId === "number") {
-              m.renderingGroupId = enabled ? 2 : 0;
-            }
-          });
-        }
-      });
+    updateXray(enabled) {
+  attempt(() => {
+    if (!bloxd.noa?.rendering?.chunkManager) return;
+
+    const cm = bloxd.noa.rendering.chunkManager;
+    const chunks = Object.values(cm.chunks || {});
+
+    for (const chunk of chunks) {
+      if (!chunk?.mesh?.material) continue;
+
+      const mat = chunk.mesh.material;
+
+      mat.wireframe = enabled;
+      mat.alpha = enabled ? 0.2 : 1;
+      mat.transparent = enabled;
     }
-  };
+  });
+}
  
   const state = {
-  killaura: { enabled: false, delay: 50, range: 6.7, jitter: 0.35, _last: 0 },
-  aimbot: { enabled: false, range: 16, smooth: 0.8, delay: 8, fov: 135, _last: 0 },
-  clicker: { left: { enabled: false, iv: null }, right: { enabled: false, iv: null }, cpsMin: 14, cpsMax: 19 },
-  movement: { bhop: false, bhopChance: 100 },
-  visuals: { esp: false, fps: false, xray: false },
-
-  ui: {
-    scale: 1
-  },
-
-  viewmodel: {
-    enabled: false,
-    pos: { x: 0, y: 0, z: 0 },
-    rot: { x: 0, y: 0, z: 0 },
-    spin: false,
-    spinSpeed: { x: 0, y: 2, z: 0 },
-    spinAngle: { x: 0, y: 0, z: 0 },
-    _lastTime: 0
-  },
-
-  binds: {
-    ka: 'KeyK',
-    aim: '',
-    lc: 'KeyR',
-    rc: 'KeyF',
-    bhop: 'KeyZ',
-    esp: '',
-    vm: '',
-    menu: 'ShiftRight'
-  }
-};
+    killaura: { enabled: false, delay: 50, range: 6.7, jitter: 0.35, _last: 0 },
+    aimbot: { enabled: false, range: 16, smooth: 0.8, delay: 8, fov: 135, _last: 0 },
+    clicker: { left: { enabled: false, iv: null }, right: { enabled: false, iv: null }, cpsMin: 14, cpsMax: 19 },
+    movement: { bhop: false, bhopChance: 100 },
+    visuals: { esp: false, fps: false, k: false },
+    viewmodel: { enabled: false, pos: { x: 0, y: 0, z: 0 }, rot: { x: 0, y: 0, z: 0 }, spin: false, spinSpeed: { x: 0, y: 2, z: 0 }, spinAngle: { x: 0, y: 0, z: 0 }, _lastTime: 0 },
+    binds: { ka: 'KeyK', aim: '', lc: 'KeyR', rc: 'KeyF', bhop: 'KeyZ', esp: '', vm: '', menu: 'ShiftRight' }
+  };
  
   let savedBinds = {};
   const bindsStr = localStorage.getItem('clickHelper-keybinds');
@@ -205,57 +179,22 @@
     state.clicker.cpsMin = savedSettings.clicker.cpsMin ?? state.clicker.cpsMin;
     state.clicker.cpsMax = savedSettings.clicker.cpsMax ?? state.clicker.cpsMax;
   }
-if (savedSettings.movement)
-  state.movement.bhopChance = savedSettings.movement.bhopChance ?? state.movement.bhopChance;
-
-if (savedSettings.ui) {
-  state.ui.scale = savedSettings.ui.scale ?? 1
-}
-
-if (savedSettings.viewmodel) {
-  if (savedSettings.viewmodel.pos)
-    Object.assign(state.viewmodel.pos, savedSettings.viewmodel.pos);
-
-  if (savedSettings.viewmodel.rot)
-    Object.assign(state.viewmodel.rot, savedSettings.viewmodel.rot);
-
-  if (savedSettings.viewmodel.spinSpeed)
-    Object.assign(state.viewmodel.spinSpeed, savedSettings.viewmodel.spinSpeed);
-}
+  if (savedSettings.movement) state.movement.bhopChance = savedSettings.movement.bhopChance ?? state.movement.bhopChance;
+  if (savedSettings.viewmodel) {
+    if (savedSettings.viewmodel.pos) Object.assign(state.viewmodel.pos, savedSettings.viewmodel.pos);
+    if (savedSettings.viewmodel.rot) Object.assign(state.viewmodel.rot, savedSettings.viewmodel.rot);
+    if (savedSettings.viewmodel.spinSpeed) Object.assign(state.viewmodel.spinSpeed, savedSettings.viewmodel.spinSpeed);
+  }
+ 
   function saveBinds() { localStorage.setItem('clickHelper-keybinds', JSON.stringify(state.binds)); }
   function saveSettings() {
     const settings = {
-  killaura: {
-    delay: state.killaura.delay,
-    range: state.killaura.range,
-    jitter: state.killaura.jitter
-  },
-
-  aimbot: {
-    range: state.aimbot.range,
-    smooth: state.aimbot.smooth,
-    delay: state.aimbot.delay
-  },
-
-  clicker: {
-    cpsMin: state.clicker.cpsMin,
-    cpsMax: state.clicker.cpsMax
-  },
-
-  movement: {
-    bhopChance: state.movement.bhopChance
-  },
-
-  ui: {
-    scale: state.ui.scale
-  },
-
-  viewmodel: {
-    pos: state.viewmodel.pos,
-    rot: state.viewmodel.rot,
-    spinSpeed: state.viewmodel.spinSpeed
-  }
-};
+      killaura: { delay: state.killaura.delay, range: state.killaura.range, jitter: state.killaura.jitter },
+      aimbot: { range: state.aimbot.range, smooth: state.aimbot.smooth, delay: state.aimbot.delay },
+      clicker: { cpsMin: state.clicker.cpsMin, cpsMax: state.clicker.cpsMax },
+      movement: { bhopChance: state.movement.bhopChance },
+      viewmodel: { pos: state.viewmodel.pos, rot: state.viewmodel.rot, spinSpeed: state.viewmodel.spinSpeed }
+    };
     localStorage.setItem('clickHelper-settings', JSON.stringify(settings));
   }
   let saveTimeout;
@@ -878,7 +817,7 @@ if (ts - fpsLast >= 1000) {
     const dot = document.getElementById('st-dot');
     const txt = document.getElementById('st-txt');
  
-    game.updateESP(state.visuals.esp);
+    game.updateXray(state.visuals.xray);
  
     const nowInGame = game.inGame();
     if (nowInGame !== inGame) {
