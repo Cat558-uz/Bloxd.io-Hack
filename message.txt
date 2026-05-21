@@ -1055,24 +1055,31 @@ if (state.movement.fly && selfPos) {
     }
   }
  
-  let uiBuilt = false;
-  function initUI() {
-    if (!uiBuilt) { uiBuilt = true; buildUI(); }
-  }
- 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initUI);
-  else initUI();
- 
-  bloxd.init();
- 
-  let coreStarted = false;
-  const poll = setInterval(() => {
-    if (!uiBuilt) initUI();
+  let uiBuilt = false
+function initUI() {
+    if (uiBuilt) return
+    uiBuilt = true
+    buildUI()
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initUI)
+} else {
+    initUI()
+}
+
+let coreStarted = false
+
+const poll = setInterval(() => {
+    if (!uiBuilt) initUI()
+
     if (window.noa && !coreStarted) {
-      coreStarted = true;
-      bloxd.noa = window.noa;
-      requestAnimationFrame(rafLoop);
-      clearInterval(poll);
+        coreStarted = true
+        bloxd.noa = window.noa
+
+        bloxd.init()
+
+        requestAnimationFrame(rafLoop)
+        clearInterval(poll)
     }
-  }, 250);
-})();
+}, 250)
