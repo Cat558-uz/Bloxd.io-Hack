@@ -154,6 +154,8 @@
     }
   });
 }
+
+}
  
   const state = {
     killaura: { enabled: false, delay: 50, range: 6.7, jitter: 0.35, _last: 0 },
