@@ -748,12 +748,6 @@ if (el) {
       }
     }
 
-    // AQUI (FPS update)
-    const el = document.getElementById('ch-fps')
-    if (el) {
-      el.style.display = state.visuals.fps ? 'block' : 'none'
-      el.innerText = `FPS: ${fps}`
-    }
 
     if (!inGame) return;
 
