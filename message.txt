@@ -165,7 +165,7 @@
     movement: { bhop: false, bhopChance: 100 },
     visuals: { esp: false, fps: false, xray: false },
     viewmodel: { enabled: false, pos: { x: 0, y: 0, z: 0 }, rot: { x: 0, y: 0, z: 0 }, spin: false, spinSpeed: { x: 0, y: 2, z: 0 }, spinAngle: { x: 0, y: 0, z: 0 }, _lastTime: 0 },
-    binds: { ka: 'KeyK', aim: '', lc: 'KeyR', rc: 'KeyF', bhop: 'KeyZ', esp: '', vm: '', menu: 'ShiftRight' }
+    binds: { ka: 'KeyK', aim: '', lc: 'KeyR', rc: 'KeyF', bhop: 'KeyZ', esp: '', vm: '', menu: 'Minus' }
   };
  
   let savedBinds = {};
@@ -274,7 +274,7 @@
         --ghost-danger: #ff4466;
         --ghost-success: #44ffaa;
       }
-      #ch-root { position: fixed; top: 20px; left: 20px; width: 300px; background: var(--ghost-bg); border: 1px solid var(--ghost-panel-border); border-radius: 10px; font-family: 'Inter', sans-serif; font-size: 11px; color: var(--ghost-text); z-index: 99999; box-shadow: 0 16px 40px rgba(0,0,0,0.6), 0 0 1px rgba(124,92,252,0.4); user-select: none; transition: opacity 0.3s ease, transform 0.3s ease; backdrop-filter: blur(16px) saturate(1.2); transform-origin: center center; }
+      #ch-root { position: fixed; top: 20px; left: 30px; width: 400px; background: var(--ghost-bg); border: 1px solid var(--ghost-panel-border); border-radius: 10px; font-family: 'Inter', sans-serif; font-size: 11px; color: var(--ghost-text); z-index: 99999; box-shadow: 0 16px 40px rgba(0,0,0,0.6), 0 0 1px rgba(124,92,252,0.4); user-select: none; transition: opacity 0.3s ease, transform 0.3s ease; backdrop-filter: blur(16px) saturate(1.2); transform-origin: center center; }
       #ch-root.hidden { opacity: 0; pointer-events: none; transform: scale(0.92); }
       #ch-root.mini #ch-body, #ch-root.mini #ch-tabs { display: none; }
       #ch-hdr { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: linear-gradient(-45deg, #7c5cfc, #c84cff, #5c9cff, #7c5cfc); background-size: 300% 300%; animation: ghostGradient 4s ease infinite; cursor: grab; border-radius: 9px 9px 0 0; }
@@ -454,7 +454,7 @@
             ${mkToggle('bhop', 'BHOP', 'bhop')}
             ${mkToggle('fly', 'Fly (beta)', '')}
             <div style="margin-top: 4px;">
-              ${mkSlider('bhop-chance', '%', 1, 100, state.movement.bhopChance)}
+              ${mkSlider('bhop-chance', '%', 1, 50, state.movement.bhopChance)}
             </div>
           </div>
         </div>
@@ -489,15 +489,46 @@
       </div>
       <div id="ch-status">
         <span><span class="dot red" id="st-dot"></span><span id="st-txt">Waiting for game</span></span>
-        <span style="opacity:0.6">RSHIFT = MENU</span>
+        <span style="opacity:0.6">for open = -</span>
       </div>
     `;
  
-    safeAppend(root);
-    const fpsCounter = document.createElement('div')
+safeAppend(root)
 
+const toast = document.createElement('div')
+toast.id = 'ch-toast'
+toast.style.cssText = `
+position: fixed;
+bottom: 20px;
+right: 20px;
+background: rgba(18,18,24,0.95);
+border: 1px solid rgba(255,255,255,0.08);
+color: #fff;
+padding: 10px 14px;
+border-radius: 8px;
+font-size: 12px;
+font-family: Inter, sans-serif;
+z-index: 999999;
+opacity: 0;
+transform: translateY(10px);
+transition: 0.25s;
+pointer-events: none;
+`
+safeAppend(toast)
+
+function toastShow(msg) {
+  toast.textContent = msg
+  toast.style.opacity = '1'
+  toast.style.transform = 'translateY(0)'
+  clearTimeout(toast._t)
+  toast._t = setTimeout(() => {
+    toast.style.opacity = '0'
+    toast.style.transform = 'translateY(10px)'
+  }, 1500)
+}
+
+const fpsCounter = document.createElement('div')
 fpsCounter.id = 'ch-fps'
-
 fpsCounter.style.cssText = `
 position: fixed;
 top: 20px;
@@ -516,9 +547,7 @@ backdrop-filter: blur(14px);
 box-shadow: 0 10px 25px rgba(0,0,0,0.45);
 user-select: none;
 `
-
 fpsCounter.innerHTML = 'FPS: 0'
-
 safeAppend(fpsCounter)
  
     // === TAB SWITCHING ===
@@ -1008,6 +1037,7 @@ if (state.movement.fly && selfPos) {
   else initUI();
  
   bloxd.init();
+  toastShow("Hello User Welcome")
  
   let coreStarted = false;
   const poll = setInterval(() => {
