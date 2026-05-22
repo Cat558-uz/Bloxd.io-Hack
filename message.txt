@@ -1028,6 +1028,8 @@ if (state.movement.fly && selfPos) {
     }
   }
  
+ toastShow("Hello User Welcome")
+ 
   let uiBuilt = false;
   function initUI() {
     if (!uiBuilt) { uiBuilt = true; buildUI(); }
@@ -1037,7 +1039,6 @@ if (state.movement.fly && selfPos) {
   else initUI();
  
   bloxd.init();
-  toastShow("Hello User Welcome")
  
   let coreStarted = false;
   const poll = setInterval(() => {
