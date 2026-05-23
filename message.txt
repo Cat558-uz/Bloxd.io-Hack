@@ -3,7 +3,7 @@
 // @namespace    https://bloxd.io
 // @icon         https://i.ibb.co/rfmXMwQz/Click-Helper-Icon.png
 
-// @version      1.5.2.1
+// @version      1.5.2.7
 // @description  Auto Clicker (L/R), Custom CPS, Account Generator, Killaura, Aimbot, BHOP, ViewModel, Player ESP.
 // @author       MakeItOrBreakIt
 // @license      MIT
