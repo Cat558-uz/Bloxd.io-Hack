@@ -3,7 +3,7 @@
 // @namespace    https://bloxd.io
 // @icon         https://i.ibb.co/rfmXMwQz/Click-Helper-Icon.png
 
-// @version      1.5.2.0
+// @version      1.5.2.1
 // @description  Auto Clicker (L/R), Custom CPS, Account Generator, Killaura, Aimbot, BHOP, ViewModel, Player ESP.
 // @author       MakeItOrBreakIt
 // @license      MIT
@@ -272,6 +272,7 @@ setTimeout(checkForUpdates, 3000);
   function saveBinds() {
   localStorage.setItem('clickHelper-keybinds', JSON.stringify(state.binds));
 }
+
   function saveSettings() {
     const settings = {
       killaura: { delay: state.killaura.delay, range: state.killaura.range, jitter: state.killaura.jitter },
