@@ -1,46 +1,64 @@
 // ==UserScript==
 // @name         Ghost UI Menu Pro
 // @namespace    https://ghost-ui
-// @version      3.0.0
-// @description  Modular UI Menu Pro - Edição Ultimate com Auto-Update, Resize e Notificações
+// @version      3.1.0
+// @description  Modular UI Menu Pro - Edição Ultimate com Minimalismo e Atalho Ç
 // @author       Ghost
 // @match        *://*/*
 // @grant        GM_xmlhttpRequest
 // @connect      githubusercontent.com
 // @connect      github.com
-// @run-at       document-end
+// @run-at       document-start
 // ==/UserScript==
 
 (() => {
     'use strict';
 
+    // --- Bloqueador de Alertas / Modais do Bloxd.io ---
+    // Isso impede que o jogo jogue notificações pop-up irritantes na tela enquanto você digita ou joga
+    const blockAlerts = () => {
+        try {
+            window.alert = function() { return true; };
+            window.confirm = function() { return true; };
+            window.prompt = function() { return null; };
+            if (window.unsafeWindow) {
+                window.unsafeWindow.alert = function() { return true; };
+                window.unsafeWindow.confirm = function() { return true; };
+                window.unsafeWindow.prompt = function() { return null; };
+            }
+        } catch(e) {}
+    };
+    blockAlerts();
+    window.addEventListener('DOMContentLoaded', blockAlerts);
+
     const UPDATE_URL = "https://raw.githubusercontent.com/Cat558-uz/Bloxd.io-Hack/main/message.txt";
-    const CURRENT_VERSION = "3.0.0";
+    const CURRENT_VERSION = "3.1.0";
 
     // Estado global da interface
     const state = {
         binds: {},
         listening: null,
         minimized: false,
+        visible: true,
         tab: "home",
         dropdowns: {}
     };
 
     let clickCount = 0;
 
-    // --- Sistema de Estilos Premium (Variaveis, Layout e Animações) ---
+    // --- Sistema de Estilos Premium (Minimalista: Preto, Cinza e Branco) ---
     const style = document.createElement("style");
     style.textContent = `
         :root {
-            --bg-main: rgba(15, 15, 22, 0.95);
-            --bg-sec: rgba(255, 255, 255, 0.03);
-            --bg-sec-hover: rgba(255, 255, 255, 0.08);
-            --accent: #7c4dff;
-            --accent-hover: #9e75ff;
+            --bg-main: rgba(10, 10, 10, 0.98);
+            --bg-sec: rgba(255, 255, 255, 0.04);
+            --bg-sec-hover: rgba(255, 255, 255, 0.1);
+            --accent: #ffffff;
+            --accent-hover: #e0e0e0;
             --border: rgba(255, 255, 255, 0.08);
-            --text: #f5f5f7;
-            --text-dim: #9898a0;
-            --success: #10b981;
+            --text: #ffffff;
+            --text-dim: #aaaaaa;
+            --success: #ffffff;
         }
 
         #ghost-ui-root {
@@ -53,40 +71,40 @@
             min-height: 200px;
             background: var(--bg-main);
             border: 1px solid var(--border);
-            border-radius: 16px;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            border-radius: 8px;
+            font-family: ui-monospace, SFMono-Regular, SF Pro Text, Menlo, Monaco, Consolas, monospace;
             color: var(--text);
             z-index: 9999999;
             overflow: hidden;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
             user-select: none;
             display: flex;
             flex-direction: column;
+            transition: opacity 0.15s ease, transform 0.15s ease;
         }
 
         #ui-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 14px 18px;
-            background: rgba(255, 255, 255, 0.01);
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.02);
             border-bottom: 1px solid var(--border);
-            font-weight: 600;
-            font-size: 14px;
+            font-weight: bold;
+            font-size: 13px;
+            letter-spacing: 0.5px;
             cursor: grab;
             flex-shrink: 0;
         }
 
         #ui-header:active { cursor: grabbing; }
 
-        #ui-controls { display: flex; gap: 8px; }
+        #ui-controls { display: flex; gap: 6px; }
 
         .ctl-btn {
-            width: 24px;
-            height: 24px;
-            border-radius: 6px;
+            width: 22px;
+            height: 22px;
+            border-radius: 4px;
             background: transparent;
             border: none;
             color: var(--text-dim);
@@ -95,26 +113,26 @@
             justify-content: center;
             font-size: 14px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.15s;
         }
 
         .ctl-btn:hover { background: var(--bg-sec-hover); color: var(--text); }
-        #close-btn:hover { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        #close-btn:hover { background: rgba(255, 0, 0, 0.2); color: #ff5555; }
 
         #ui-body {
-            padding: 16px;
+            padding: 14px;
             display: flex;
             flex-direction: column;
-            gap: 14px;
+            gap: 12px;
             flex-grow: 1;
             overflow-y: auto;
         }
 
         #tabs {
             display: flex;
-            background: rgba(0, 0, 0, 0.2);
-            padding: 4px;
-            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 3px;
+            border-radius: 6px;
             border: 1px solid var(--border);
             flex-shrink: 0;
         }
@@ -122,56 +140,52 @@
         .tab {
             flex: 1;
             padding: 8px;
-            font-size: 12px;
-            font-weight: 500;
+            font-size: 11px;
+            font-weight: 600;
             color: var(--text-dim);
-            border-radius: 6px;
+            border-radius: 4px;
             cursor: pointer;
             text-align: center;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
+            transition: all 0.15s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .tab:hover { color: var(--text); }
+        .tab:hover { color: var(--text); background: rgba(255, 255, 255, 0.02); }
         .tab.active {
             background: var(--accent);
-            color: #fff;
-            box-shadow: 0 4px 12px rgba(124, 77, 255, 0.3);
+            color: #000000;
         }
 
         #ui-content {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 10px;
         }
 
-        /* Elemento de Seções Organizadas */
         .ui-section {
             border: 1px solid var(--border);
-            border-radius: 12px;
-            background: rgba(0, 0, 0, 0.15);
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.2);
             overflow: hidden;
         }
 
         .ui-section-title {
-            padding: 8px 12px;
-            background: rgba(255, 255, 255, 0.02);
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.01);
             border-bottom: 1px solid var(--border);
-            font-size: 11px;
+            font-size: 10px;
             text-transform: uppercase;
-            letter-spacing: 0.8px;
+            letter-spacing: 1px;
             color: var(--text-dim);
-            font-weight: 700;
+            font-weight: bold;
         }
 
         .ui-section-content {
-            padding: 10px;
+            padding: 8px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
         }
 
         .row {
@@ -180,31 +194,34 @@
             align-items: center;
             background: var(--bg-sec);
             padding: 8px 12px;
-            border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.03);
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.01);
             gap: 12px;
         }
 
-        .row span { font-size: 13px; }
-        .row .val { color: var(--accent); font-weight: 600; font-size: 12px; min-width: 28px; text-align: right;}
+        .row span { font-size: 12px; }
+        .row .val { color: var(--text); font-weight: bold; font-size: 11px; min-width: 28px; text-align: right;}
 
         .btn {
             width: 100%;
-            padding: 9px;
-            border: none;
-            border-radius: 8px;
-            background: var(--accent);
-            color: #fff;
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            background: var(--bg-sec);
+            color: var(--text);
             font-weight: 600;
-            font-size: 13px;
+            font-size: 12px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.15s;
+            text-align: left;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        .btn:hover { background: var(--accent-hover); transform: translateY(-1px); }
-        .btn:active { transform: translateY(0); }
+        .btn:hover { background: var(--text); color: #000000; border-color: var(--text); }
+        .btn:active { transform: scale(0.99); }
 
-        /* Dropdown customizado estilo Pro */
         .dropdown-container {
             display: flex;
             flex-direction: column;
@@ -217,11 +234,11 @@
             align-items: center;
             background: var(--bg-sec);
             padding: 8px 12px;
-            border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.03);
-            font-size: 13px;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.01);
+            font-size: 12px;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: background 0.15s;
         }
 
         .dropdown-trigger:hover { background: var(--bg-sec-hover); }
@@ -229,9 +246,9 @@
         .dropdown-menu {
             display: none;
             flex-direction: column;
-            background: rgba(10, 10, 15, 0.95);
+            background: #0a0a0a;
             border: 1px solid var(--border);
-            border-radius: 8px;
+            border-radius: 6px;
             margin-top: 4px;
             overflow: hidden;
             z-index: 10;
@@ -243,18 +260,18 @@
             padding: 8px 12px;
             font-size: 12px;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: background 0.15s;
             color: var(--text-dim);
         }
 
-        .dropdown-item:hover { background: var(--accent); color: white; }
+        .dropdown-item:hover { background: var(--text); color: #000; }
 
         input[type=range] {
             flex: 1;
             -webkit-appearance: none;
             appearance: none;
             background: rgba(255,255,255,0.1);
-            height: 4px;
+            height: 3px;
             border-radius: 2px;
             outline: none;
         }
@@ -262,72 +279,65 @@
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            width: 12px;
-            height: 12px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
-            background: var(--accent);
+            background: var(--text);
             cursor: pointer;
         }
 
         .bind-btn {
-            padding: 4px 10px;
+            padding: 4px 8px;
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid var(--border);
-            border-radius: 6px;
+            border-radius: 4px;
             font-size: 11px;
-            font-weight: 600;
+            font-weight: bold;
             cursor: pointer;
             min-width: 60px;
             text-align: center;
         }
 
         .bind-btn.active {
-            background: rgba(239, 68, 68, 0.2);
-            border-color: #ef4444;
-            color: #ef4444;
+            background: #ffffff;
+            color: #000000;
         }
 
-        /* Ícone de Arrastar/Redimensionar no Canto */
         #ui-resizer {
             position: absolute;
             bottom: 0;
             right: 0;
-            width: 14px;
-            height: 14px;
+            width: 12px;
+            height: 12px;
             cursor: se-resize;
-            background: linear-gradient(135deg, transparent 30%, transparent 50%, var(--text-dim) 50%, transparent 60%, var(--text-dim) 70%);
-            background-size: 4px 4px;
-            border-bottom-right-radius: 16px;
+            background: linear-gradient(135deg, transparent 50%, var(--text-dim) 50%);
+            background-size: 100% 100%;
         }
 
-        /* Central de Notificações Visual */
         #ui-notification-container {
             position: fixed;
             bottom: 20px;
             right: 20px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
             z-index: 10000000;
             pointer-events: none;
         }
 
         .ui-notification {
-            background: rgba(15, 15, 25, 0.96);
+            background: #0a0a0a;
             border: 1px solid var(--border);
-            border-left: 4px solid var(--accent);
-            padding: 12px 18px;
-            border-radius: 8px;
+            border-left: 3px solid var(--text);
+            padding: 10px 16px;
+            border-radius: 4px;
             color: var(--text);
-            font-family: sans-serif;
-            font-size: 13px;
+            font-family: monospace;
+            font-size: 12px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             transform: translateX(120%);
-            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: transform 0.2s ease-out;
             pointer-events: auto;
-            display: flex;
-            align-items: center;
-            gap: 10px;
         }
 
         .ui-notification.show { transform: translateX(0); }
@@ -339,17 +349,16 @@
     notifyContainer.id = "ui-notification-container";
     document.body.appendChild(notifyContainer);
 
-    const showNotification = (text, type = "info") => {
+    const showNotification = (text) => {
         const notif = document.createElement("div");
         notif.className = "ui-notification";
-        if(type === "success") notif.style.borderLeftColor = "var(--success)";
-        notif.innerHTML = `<span>⚡</span> <span>${text}</span>`;
+        notif.innerHTML = `<span>[GHOST] ${text}</span>`;
         notifyContainer.appendChild(notif);
-        setTimeout(() => notif.classList.add("show"), 50);
+        setTimeout(() => notif.classList.add("show"), 10);
         setTimeout(() => {
             notif.classList.remove("show");
-            setTimeout(() => notif.remove(), 300);
-        }, 3000);
+            setTimeout(() => notif.remove(), 200);
+        }, 2500);
     };
 
     // Montando Estrutura Principal
@@ -357,7 +366,7 @@
     root.id = "ghost-ui-root";
     root.innerHTML = `
         <div id="ui-header">
-            <div>Aint Menu | Beta Version</div>
+            <div>GHOST UI MENU Pro</div>
             <div id="ui-controls">
                 <button class="ctl-btn" id="min-btn">−</button>
                 <button class="ctl-btn" id="close-btn">×</button>
@@ -365,8 +374,8 @@
         </div>
         <div id="ui-body">
             <div id="tabs">
-                <div class="tab active" data-tab="home">📝 Geral</div>
-                <div class="tab" data-tab="main">📍 Visual</div>
+                <div class="tab active" data-tab="home">Geral</div>
+                <div class="tab" data-tab="main">Visual</div>
             </div>
             <div id="ui-content"></div>
         </div>
@@ -378,8 +387,7 @@
     const content = root.querySelector("#ui-content");
     const tabs = root.querySelectorAll(".tab");
 
-    // --- Componentes Avançados e Reutilizáveis ---
-
+    // --- Componentes Reutilizáveis ---
     const addSection = (title, parent) => {
         const sec = document.createElement("div");
         sec.className = "ui-section";
@@ -394,7 +402,7 @@
     const addButton = (text, parent, cb) => {
         const b = document.createElement("button");
         b.className = "btn";
-        b.textContent = text;
+        b.innerHTML = `<span>${text}</span> <span>→</span>`;
         b.onclick = cb;
         parent.appendChild(b);
     };
@@ -455,7 +463,7 @@
         row.innerHTML = `<span>${label}</span>`;
         const b = document.createElement("div");
         b.className = `bind-btn ${state.listening === key ? 'active' : ''}`;
-        b.textContent = state.binds[key] ? state.binds[key].replace("Key", "") : "NENHUM";
+        b.textContent = state.binds[key] ? state.binds[key].replace("Key", "") : "NONE";
 
         b.onclick = (e) => {
             e.stopPropagation();
@@ -468,19 +476,34 @@
         parent.appendChild(row);
     };
 
-    // --- Processador Universal de Teclas ---
+    // --- Sistema de Alternância (Exibir / Ocultar) por Tecla [ Ç ] ---
     document.addEventListener("keydown", (e) => {
+        // Se estiver configurando um macro, ignora o atalho principal
         if (state.listening) {
             state.binds[state.listening] = e.code;
-            showNotification(`Atalho definido: ${e.code.replace("Key", "")}`, "success");
+            showNotification(`Atalho definido: ${e.code.replace("Key", "")}`);
             state.listening = null;
             render();
+            return;
+        }
+
+        // Atalho alternador na tecla Ç (Semicolon ou cedilha dependendo da API/Keyboard layout)
+        if (e.key === "ç" || e.key === "Ç" || e.code === "Semicolon") {
+            // Evita abrir chats se o jogo tentar ler a tecla simultaneamente
+            e.preventDefault();
+            state.visible = !state.visible;
+            if (state.visible) {
+                root.style.display = "flex";
+                setTimeout(() => { root.style.opacity = "1"; root.style.transform = "scale(1)"; }, 10);
+            } else {
+                root.style.opacity = "0";
+                root.style.transform = "scale(0.95)";
+                setTimeout(() => { root.style.display = "none"; }, 150);
+            }
         }
     });
 
-    // Variáveis de controle para os novos recursos
     let fpsInterval = null;
-    let wasdElement = null;
 
     // --- Renderização Modular da Interface ---
     const render = () => {
@@ -491,54 +514,44 @@
             
             addButton(`Contador Interno: ${clickCount}`, secAutomacao, (e) => {
                 clickCount++;
-                e.target.textContent = `Contador Interno: ${clickCount}`;
-                showNotification(`Cliques registrados: ${clickCount}`);
+                render();
+                showNotification(`Cliques: ${clickCount}`);
             });
 
             addBind("Macro Instantâneo", "macroKey", secAutomacao, () => {});
 
-            // --- NOVA SEÇÃO: MÉTRICAS E HUD ---
+            // --- SEÇÃO METRICAS ---
             const secHUD = addSection("Métricas e HUD", content);
 
-            addButton("Alternar Mostrar FPS", secHUD, (e) => {
+            addButton("Alternar Mostrar FPS", secHUD, () => {
                 let fpsBox = document.getElementById("ghost-fps-counter");
                 if (fpsBox) {
-                    clearInterval(fpsInterval);
                     fpsBox.remove();
-                    showNotification("Contador de FPS desativado.");
+                    showNotification("FPS Desativado");
                 } else {
-                    // Cria a caixinha de FPS na tela
                     fpsBox = document.createElement("div");
                     fpsBox.id = "ghost-fps-counter";
-                    fpsBox.style = "position:fixed; top:10px; right:10px; background:rgba(15,15,22,0.85); border:1px solid var(--border); padding:6px 12px; border-radius:8px; color:#10b981; font-family:monospace; font-weight:bold; z-index:9999998; pointer-events:none; font-size:14px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);";
+                    fpsBox.style = "position:fixed; top:12px; right:12px; background:#0a0a0a; border:1px solid var(--border); padding:6px 12px; border-radius:4px; color:#ffffff; font-family:monospace; font-weight:bold; z-index:9999998; pointer-events:none; font-size:12px;";
                     fpsBox.textContent = "FPS: --";
                     document.body.appendChild(fpsBox);
 
-                    // Lógica para calcular o FPS
-                    let lastCalledTime;
+                    let lastCalledTime = performance.now();
                     let counter = 0;
-                    let fpsArr = [];
 
                     function fpsLoop() {
                         if (!document.getElementById("ghost-fps-counter")) return;
-                        if (!lastCalledTime) {
-                            lastCalledTime = performance.now();
-                            counter = 0;
-                            requestAnimationFrame(fpsLoop);
-                            return;
-                        }
                         let delta = (performance.now() - lastCalledTime) / 1000;
                         lastCalledTime = performance.now();
                         let currentFps = Math.round(1 / delta);
                         
                         counter++;
-                        if (counter % 5 === 0) { // Atualiza o texto a cada 5 frames para não piscar muito rápido
+                        if (counter % 6 === 0) {
                             fpsBox.textContent = `FPS: ${currentFps}`;
                         }
                         requestAnimationFrame(fpsLoop);
                     }
                     requestAnimationFrame(fpsLoop);
-                    showNotification("Contador de FPS ativado!", "success");
+                    showNotification("FPS Ativado");
                 }
             });
 
@@ -546,28 +559,26 @@
                 let wasdBox = document.getElementById("ghost-wasd-hud");
                 if (wasdBox) {
                     wasdBox.remove();
-                    showNotification("HUD WASD desativado.");
+                    showNotification("WASD Desativado");
                 } else {
-                    // Cria o container do WASD estilo overlay de stream
                     wasdBox = document.createElement("div");
                     wasdBox.id = "ghost-wasd-hud";
-                    wasdBox.style = "position:fixed; bottom:20px; left:20px; display:grid; grid-template-columns: repeat(3, 35px); grid-template-rows: repeat(2, 35px); gap:5px; z-index:9999998; pointer-events:none; font-family:monospace; font-weight:bold; text-align:center;";
+                    wasdBox.style = "position:fixed; bottom:20px; left:20px; display:grid; grid-template-columns: repeat(3, 35px); grid-template-rows: repeat(2, 35px); gap:4px; z-index:9999998; pointer-events:none; font-family:monospace; font-weight:bold; text-align:center;";
                     
-                    // Estrutura das teclas
                     wasdBox.innerHTML = `
-                        <div></div><div id="wasd-W" style="background:rgba(255,255,255,0.1); border:1px solid var(--border); border-radius:6px; line-height:35px; color:var(--text-dim);">W</div><div></div>
-                        <div id="wasd-A" style="background:rgba(255,255,255,0.1); border:1px solid var(--border); border-radius:6px; line-height:35px; color:var(--text-dim);">A</div>
-                        <div id="wasd-S" style="background:rgba(255,255,255,0.1); border:1px solid var(--border); border-radius:6px; line-height:35px; color:var(--text-dim);">S</div>
-                        <div id="wasd-D" style="background:rgba(255,255,255,0.1); border:1px solid var(--border); border-radius:6px; line-height:35px; color:var(--text-dim);">D</div>
+                        <div></div><div id="wasd-W" style="background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:4px; line-height:35px; color:var(--text-dim); font-size:12px;">W</div><div></div>
+                        <div id="wasd-A" style="background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:4px; line-height:35px; color:var(--text-dim); font-size:12px;">A</div>
+                        <div id="wasd-S" style="background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:4px; line-height:35px; color:var(--text-dim); font-size:12px;">S</div>
+                        <div id="wasd-D" style="background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:4px; line-height:35px; color:var(--text-dim); font-size:12px;">D</div>
                     `;
                     document.body.appendChild(wasdBox);
-                    showNotification("HUD WASD ativado!", "success");
+                    showNotification("WASD Ativado");
                 }
             });
 
             const secConfig = addSection("Ajustes Avançados", content);
             addDropdown("Servidor", ["América", "Europa", "Ásia"], "América", secConfig, (sel) => {
-                showNotification(`Servidor alterado para: ${sel}`, "success");
+                showNotification(`Servidor: ${sel}`);
             });
         }
 
@@ -577,24 +588,23 @@
             addButton("Inverter Cromatização (Modo Dark)", secFiltros, () => {
                 const html = document.documentElement;
                 html.style.filter = html.style.filter === "invert(1)" ? "none" : "invert(1)";
-                showNotification("Filtro de visualização alterado!");
+                showNotification("Visual Alterado");
             });
 
-            addSlider("Opacidade Menu", 30, 100, 95, secFiltros, (val) => {
-                root.style.setProperty('--bg-main', `rgba(15, 15, 22, ${val / 100})`);
+            addSlider("Opacidade Menu", 30, 100, 98, secFiltros, (val) => {
+                root.style.setProperty('--bg-main', `rgba(10, 10, 10, ${val / 100})`);
             });
         }
     };
 
-    // --- Sistema de escuta para pintar o HUD WASD na tela em tempo real ---
+    // --- Escuta de Teclas para o HUD WASD Estilizado ---
     document.addEventListener("keydown", (e) => {
         const key = e.key.toUpperCase();
         if (["W", "A", "S", "D"].includes(key)) {
             const el = document.getElementById(`wasd-${key}`);
             if (el) {
-                el.style.background = "var(--accent)";
-                el.style.color = "#fff";
-                el.style.boxShadow = "0 0 8px var(--accent)";
+                el.style.background = "#ffffff";
+                el.style.color = "#000000";
             }
         }
     });
@@ -604,14 +614,13 @@
         if (["W", "A", "S", "D"].includes(key)) {
             const el = document.getElementById(`wasd-${key}`);
             if (el) {
-                el.style.background = "rgba(255,255,255,0.1)";
+                el.style.background = "rgba(255,255,255,0.04)";
                 el.style.color = "var(--text-dim)";
-                el.style.boxShadow = "none";
             }
         }
     });
 
-    // --- Lógica de Abas e Janela (Minimizar, Fechar) ---
+    // --- Controle de Abas e Janela ---
     tabs.forEach(t => {
         t.onclick = () => {
             tabs.forEach(x => x.classList.remove("active"));
@@ -629,11 +638,11 @@
 
     root.querySelector("#close-btn").onclick = () => {
         root.style.opacity = "0";
-        root.style.transform = "translateY(15px)";
-        setTimeout(() => root.remove(), 200);
+        root.style.transform = "scale(0.95)";
+        setTimeout(() => root.remove(), 150);
     };
 
-    // --- Sistema Fluido de Arrastar (Drag) ---
+    // --- Sistema de Arrastar (Drag) ---
     let drag = false, ox = 0, oy = 0;
     header.onmousedown = (e) => {
         if (e.target.classList.contains('ctl-btn')) return;
@@ -644,7 +653,7 @@
     document.addEventListener("mousemove", (e) => { if (drag) { root.style.left = `${e.clientX - ox}px`; root.style.top = `${e.clientY - oy}px`; } });
     document.addEventListener("mouseup", () => drag = false);
 
-    // --- Sistema Fluido de Redimensionamento (Resize) ---
+    // --- Redimensionamento (Resize) ---
     let resizing = false, startW = 0, startH = 0, startX = 0, startY = 0;
     root.querySelector("#ui-resizer").onmousedown = (e) => {
         e.preventDefault(); e.stopPropagation();
@@ -659,27 +668,24 @@
     });
     document.addEventListener("mouseup", () => resizing = false);
 
-    // --- Atualizador Automático via GitHub ---
+    // --- Verificação de Versão Limpa ---
     const checkUpdates = () => {
         if (typeof GM_xmlhttpRequest === "undefined") return;
-        
         GM_xmlhttpRequest({
             method: "GET",
             url: UPDATE_URL,
             onload: (res) => {
-                // Filtra os números de versão presentes no arquivo remoto
                 const match = res.responseText.match(/version\s*([\d.]+)/i);
                 if (match && match[1]) {
                     const remoteVersion = match[1].trim();
                     if (remoteVersion !== CURRENT_VERSION) {
-                        showNotification(`Nova versão disponível: v${remoteVersion}! Altere no seu gerenciador.`, "success");
+                        showNotification(`Update disponivel: v${remoteVersion}`);
                     }
                 }
             }
         });
     };
 
-    // Inicialização completa
     render();
     checkUpdates();
 })();
