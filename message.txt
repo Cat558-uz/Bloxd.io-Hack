@@ -3,7 +3,7 @@
 // @namespace    https://bloxd.io
 // @icon         https://i.ibb.co/rfmXMwQz/Click-Helper-Icon.png
 
-// @version      1.5.3.4
+// @version      1.5.3.7
 // @description  Auto Clicker (L/R), Custom CPS, Account Generator, Killaura, Aimbot, BHOP, ViewModel, Player ESP.
 // @author       MakeItOrBreakIt
 // @license      MIT
@@ -934,23 +934,32 @@ function rafLoop(ts) {
     }
 
   let uiBuilt = false;
-  function initUI() {
-    if (!uiBuilt) { uiBuilt = true; buildUI(); }
+
+function initUI() {
+  if (uiBuilt) return;
+  uiBuilt = true;
+  buildUI();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initUI);
+} else {
+  initUI();
+}
+
+bloxd.init();
+
+let coreStarted = false;
+
+const poll = setInterval(() => {
+  if (!uiBuilt) initUI();
+
+  if (window.noa && !coreStarted) {
+    coreStarted = true;
+    bloxd.noa = window.noa;
+    requestAnimationFrame(rafLoop);
+    clearInterval(poll);
   }
+}, 250);
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initUI);
-  else initUI();
-
-  bloxd.init();
-
-  let coreStarted = false;
-  const poll = setInterval(() => {
-    if (!uiBuilt) initUI();
-    if (window.noa && !coreStarted) {
-      coreStarted = true;
-      bloxd.noa = window.noa;
-      requestAnimationFrame(rafLoop);
-      clearInterval(poll);
-    }
-  }, 250);
 })();
