@@ -2,296 +2,422 @@
 // @name         Ghost UI Menu Pro
 // @namespace    https://ghost-ui
 // @version      3.0.0
-// @description  Modular UI Menu Pro
+// @description  Modular UI Menu Pro - Versão Premium Fluida com Utilidades
 // @author       Ghost
 // @match        *://*/*
 // @grant        none
-// @run-at       document-start
+// @run-at       document-end
 // ==/UserScript==
 
 (() => {
-  const state = {
-    binds: {},
-    listening: null,
-    minimized: false,
-    tab: "home"
-  }
+    'use strict';
 
-  const root = document.createElement("div")
-  root.id = "ui"
+    // Estado global da interface
+    const state = {
+        binds: {},
+        listening: null,
+        minimized: false,
+        tab: "home",
+        bindCallbacks: {}
+    };
 
-  const style = document.createElement("style")
-  style.textContent = `
-  #ui{
-    position:fixed;
-    top:80px;
-    left:80px;
-    width:380px;
-    background:rgba(18,18,26,0.95);
-    border:1px solid rgba(255,255,255,0.08);
-    border-radius:12px;
-    font-family:Arial;
-    color:#fff;
-    z-index:999999;
-    overflow:hidden;
-    box-shadow:0 10px 40px rgba(0,0,0,0.4);
-    user-select:none;
-  }
+    // Variáveis de controle para as funções dos botões de exemplo
+    let clickCount = 0;
 
-  #ui-header{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    padding:10px;
-    background:linear-gradient(90deg,#6a5acd,#b04cff);
-    font-weight:700;
-    cursor:grab;
-  }
+    // Injeção de estilos modernos baseados em variáveis CSS e efeitos modernos
+    const style = document.createElement("style");
+    style.textContent = `
+        :root {
+            --bg-main: rgba(15, 15, 20, 0.92);
+            --bg-sec: rgba(255, 255, 255, 0.03);
+            --bg-sec-hover: rgba(255, 255, 255, 0.07);
+            --accent: #7c4dff;
+            --accent-hover: #9e75ff;
+            --border: rgba(255, 255, 255, 0.08);
+            --text: #f5f5f7;
+            --text-dim: #9898a0;
+        }
 
-  #ui-controls{
-    display:flex;
-    gap:6px;
-  }
+        #ghost-ui-root {
+            position: fixed;
+            top: 100px;
+            left: 100px;
+            width: 350px;
+            background: var(--bg-main);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: var(--text);
+            z-index: 9999999;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            user-select: none;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
 
-  .ctl{
-    width:18px;
-    height:18px;
-    border-radius:4px;
-    background:rgba(255,255,255,0.2);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:12px;
-    cursor:pointer;
-  }
+        #ui-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 18px;
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+            font-size: 14px;
+            letter-spacing: 0.5px;
+            cursor: grab;
+        }
 
-  #ui-body{
-    padding:10px;
-    display:flex;
-    flex-direction:column;
-    gap:10px;
-  }
+        #ui-header:active { cursor: grabbing; }
 
-  #tabs{
-    display:flex;
-    gap:6px;
-  }
+        #ui-controls {
+            display: flex;
+            gap: 8px;
+        }
 
-  .tab{
-    flex:1;
-    padding:6px;
-    font-size:11px;
-    background:rgba(255,255,255,0.06);
-    border-radius:6px;
-    cursor:pointer;
-    text-align:center;
-  }
+        .ctl-btn {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
 
-  .tab.active{
-    background:#6a5acd;
-  }
+        .ctl-btn:hover {
+            background: var(--bg-sec-hover);
+            color: var(--text);
+        }
 
-  .sec{
-    background:rgba(255,255,255,0.04);
-    padding:10px;
-    border-radius:10px;
-  }
+        #close-btn:hover { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
 
-  .row{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin:8px 0;
-    gap:8px;
-  }
+        #ui-body {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
 
-  .btn{
-    padding:7px 10px;
-    border:none;
-    border-radius:6px;
-    background:#6a5acd;
-    color:#fff;
-    cursor:pointer;
-    font-size:11px;
-  }
+        #tabs {
+            display: flex;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 4px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
 
-  .btn:hover{
-    background:#7b6bff;
-  }
+        .tab {
+            flex: 1;
+            padding: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-dim);
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
 
-  input[type=range]{
-    width:100%;
-  }
+        .tab:hover { color: var(--text); }
+        .tab.active {
+            background: var(--accent);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(124, 77, 255, 0.3);
+        }
 
-  .bind{
-    padding:4px 8px;
-    background:rgba(255,255,255,0.08);
-    border-radius:6px;
-    font-size:10px;
-    cursor:pointer;
-    min-width:55px;
-    text-align:center;
-  }
+        .sec {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            animation: fadeIn 0.2s ease-in-out;
+        }
 
-  .bind.active{
-    background:#b04cff;
-  }
-  `
-  document.head.appendChild(style)
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
 
-  root.innerHTML = `
-    <div id="ui-header">
-      <div>Ghost UI</div>
-      <div id="ui-controls">
-        <div class="ctl" id="min">-</div>
-        <div class="ctl" id="close">x</div>
-      </div>
-    </div>
+        .row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-sec);
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            gap: 12px;
+        }
 
-    <div id="ui-body">
-      <div id="tabs">
-        <div class="tab active" data-tab="home">Home</div>
-        <div class="tab" data-tab="main">Main</div>
-      </div>
-      <div id="content"></div>
-    </div>
-  `
+        .row span { font-size: 13px; font-weight: 500; }
+        .row .val { color: var(--accent); font-weight: 600; font-size: 12px; min-width: 28px; text-align: right;}
 
-  document.body.appendChild(root)
+        .btn {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 10px;
+            background: var(--accent);
+            color: #fff;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(124, 77, 255, 0.2);
+        }
 
-  const header = root.querySelector("#ui-header")
-  const content = root.querySelector("#content")
+        .btn:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+        .btn:active { transform: translateY(0); }
 
-  const tabs = root.querySelectorAll(".tab")
+        input[type=range] {
+            flex: 1;
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(255,255,255,0.1);
+            height: 6px;
+            border-radius: 3px;
+            outline: none;
+        }
 
-  const addButton = (text, parent, cb) => {
-    const b = document.createElement("button")
-    b.className = "btn"
-    b.textContent = text
-    b.onclick = cb
-    parent.appendChild(b)
-  }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 
-  const addSlider = (label, min, max, value, parent, cb) => {
-    const row = document.createElement("div")
-    row.className = "row"
+        .bind-btn {
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text);
+            cursor: pointer;
+            min-width: 65px;
+            text-align: center;
+            transition: all 0.2s;
+        }
 
-    const r = document.createElement("input")
-    r.type = "range"
-    r.min = min
-    r.max = max
-    r.value = value
+        .bind-btn.active {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: #ef4444;
+            color: #ef4444;
+            animation: pulse 1s infinite;
+        }
 
-    const v = document.createElement("span")
-    v.textContent = value
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+    `;
+    document.head.appendChild(style);
 
-    r.oninput = () => {
-      v.textContent = r.value
-      cb(r.value)
-    }
+    // Estrutura Base do Menu
+    const root = document.createElement("div");
+    root.id = "ghost-ui-root";
+    root.innerHTML = `
+        <div id="ui-header">
+            <div>Ghost UI Menu Pro</div>
+            <div id="ui-controls">
+                <button class="ctl-btn" id="min-btn">−</button>
+                <button class="ctl-btn" id="close-btn">×</button>
+            </div>
+        </div>
+        <div id="ui-body">
+            <div id="tabs">
+                <div class="tab active" data-tab="home">Geral</div>
+                <div class="tab" data-tab="main">Exibição</div>
+            </div>
+            <div id="content"></div>
+        </div>
+    `;
+    document.body.appendChild(root);
 
-    const t = document.createElement("span")
-    t.textContent = label
+    const header = root.querySelector("#ui-header");
+    const content = root.querySelector("#content");
+    const tabs = root.querySelectorAll(".tab");
 
-    row.appendChild(t)
-    row.appendChild(r)
-    row.appendChild(v)
+    // --- Builders de Elementos Reutilizáveis ---
 
-    parent.appendChild(row)
-  }
+    const addButton = (text, parent, cb) => {
+        const b = document.createElement("button");
+        b.className = "btn";
+        b.textContent = text;
+        b.onclick = cb;
+        parent.appendChild(b);
+    };
 
-  const addBind = (label, key, parent, cb) => {
-    const row = document.createElement("div")
-    row.className = "row"
+    const addSlider = (label, min, max, value, parent, cb) => {
+        const row = document.createElement("div");
+        row.className = "row";
 
-    const b = document.createElement("div")
-    b.className = "bind"
-    b.textContent = state.binds[key] || "NONE"
+        const labelSpan = document.createElement("span");
+        labelSpan.textContent = label;
 
-    b.onclick = () => {
-      state.listening = key
-      b.textContent = "..."
-      b.classList.add("active")
-    }
+        const r = document.createElement("input");
+        r.type = "range";
+        r.min = min;
+        r.max = max;
+        r.value = value;
 
-    row.appendChild(document.createElement("span")).textContent = label
-    row.appendChild(b)
-    parent.appendChild(row)
+        const v = document.createElement("span");
+        v.className = "val";
+        v.textContent = value;
 
+        r.oninput = () => {
+            v.textContent = r.value;
+            cb(r.value);
+        };
+
+        row.appendChild(labelSpan);
+        row.appendChild(r);
+        row.appendChild(v);
+        parent.appendChild(row);
+    };
+
+    const addBind = (label, key, parent, cb) => {
+        const row = document.createElement("div");
+        row.className = "row";
+
+        const labelSpan = document.createElement("span");
+        labelSpan.textContent = label;
+
+        const b = document.createElement("div");
+        b.className = `bind-btn ${state.listening === key ? 'active' : ''}`;
+        
+        let displayKey = state.binds[key] ? state.binds[key].replace("Key", "") : "NENHUM";
+        b.textContent = state.listening === key ? "..." : displayKey;
+
+        b.onclick = (e) => {
+            e.stopPropagation();
+            state.listening = key;
+            render();
+        };
+
+        state.bindCallbacks[key] = cb;
+
+        row.appendChild(labelSpan);
+        row.appendChild(b);
+        parent.appendChild(row);
+    };
+
+    // --- Sistema Único de Eventos de Teclado (Consertado) ---
     document.addEventListener("keydown", (e) => {
-      if (state.listening !== key) return
+        // Modo Captura de Tecla (Configurando Atalho)
+        if (state.listening) {
+            const key = state.listening;
+            state.binds[key] = e.code;
+            state.listening = null;
+            render();
+            return;
+        }
 
-      state.binds[key] = e.code
-      b.textContent = e.code.replace("Key", "")
-      b.classList.remove("active")
-      state.listening = null
+        // Modo Execução (Dispara ações se a tecla salva for clicada)
+        if (state.binds["alertBind"] && e.code === state.binds["alertBind"]) {
+            alert("Atalho executado com sucesso no Ghost UI!");
+        }
+    });
 
-      cb(e.code)
-    })
-  }
+    // --- Renderização Dinâmica das Abas e Recursos ---
+    const render = () => {
+        content.innerHTML = "";
+        const sec = document.createElement("div");
+        sec.className = "sec";
 
-  const render = () => {
-    content.innerHTML = ""
+        // ABA 1: GERAL (Automação e Ferramentas)
+        if (state.tab === "home") {
+            // Botão interativo para contar cliques com estado dinâmico
+            addButton(`Contador de Cliques: ${clickCount}`, sec, (e) => {
+                clickCount++;
+                e.target.textContent = `Contador de Cliques: ${clickCount}`;
+            });
 
-    if (state.tab === "home") {
-      const sec = document.createElement("div")
-      sec.className = "sec"
+            // Controle deslizante para alterar a opacidade do próprio painel
+            addSlider("Opacidade Menu", 20, 100, 92, sec, (val) => {
+                root.style.setProperty('--bg-main', `rgba(15, 15, 20, ${val / 100})`);
+            });
 
-      addButton("Test Button", sec, () => {})
-      addSlider("Speed", 1, 100, 50, sec, () => {})
-      addBind("Auto Action", "auto", sec, () => {})
+            // Atalho de teclado configurável para disparar um alerta em segundo plano
+            addBind("Mensagem de Alerta", "alertBind", sec, () => {});
+        }
 
-      content.appendChild(sec)
-    }
+        // ABA 2: EXIBIÇÃO (Customizações visuais da página web ativa)
+        if (state.tab === "main") {
+            // Botão que inverte os filtros cromáticos do site (Modo Escuro Forçado rápido)
+            addButton("Alternar Modo Negativo", sec, () => {
+                const html = document.documentElement;
+                html.style.filter = html.style.filter === "invert(1)" ? "none" : "invert(1)";
+            });
 
-    if (state.tab === "main") {
-      const sec = document.createElement("div")
-      sec.className = "sec"
+            // Controle deslizante que manipula o tamanho das fontes do site em tempo real
+            addSlider("Tamanho da Letra", 12, 26, 16, sec, (val) => {
+                document.body.style.fontSize = `${val}px`;
+            });
+        }
 
-      addButton("Action", sec, () => {})
-      content.appendChild(sec)
-    }
-  }
+        content.appendChild(sec);
+    };
 
-  tabs.forEach(t => {
-    t.onclick = () => {
-      tabs.forEach(x => x.classList.remove("active"))
-      t.classList.add("active")
-      state.tab = t.dataset.tab
-      render()
-    }
-  })
+    // --- Handlers de Controle Superior e Navegação ---
+    tabs.forEach(t => {
+        t.onclick = () => {
+            tabs.forEach(x => x.classList.remove("active"));
+            t.classList.add("active");
+            state.tab = t.dataset.tab;
+            render();
+        };
+    });
 
-  root.querySelector("#min").onclick = () => {
-    state.minimized = !state.minimized
-    root.querySelector("#ui-body").style.display = state.minimized ? "none" : "block"
-  }
+    root.querySelector("#min-btn").onclick = () => {
+        state.minimized = !state.minimized;
+        root.querySelector("#ui-body").style.display = state.minimized ? "none" : "flex";
+        root.querySelector("#min-btn").textContent = state.minimized ? "+" : "−";
+    };
 
-  root.querySelector("#close").onclick = () => {
-    root.remove()
-  }
+    root.querySelector("#close-btn").onclick = () => {
+        root.style.opacity = "0";
+        root.style.transform = "translateY(12px)";
+        setTimeout(() => root.remove(), 200);
+    };
 
-  let drag = false
-  let ox = 0
-  let oy = 0
+    // --- Sistema de Arrastar Corrigido (Sem conflito com botões) ---
+    let drag = false, ox = 0, oy = 0;
 
-  header.onmousedown = (e) => {
-    drag = true
-    ox = e.clientX - root.offsetLeft
-    oy = e.clientY - root.offsetTop
-    header.style.cursor = "grabbing"
-  }
+    header.onmousedown = (e) => {
+        if (e.target.classList.contains('ctl-btn')) return;
+        drag = true;
+        ox = e.clientX - root.offsetLeft;
+        oy = e.clientY - root.offsetTop;
+    };
 
-  document.onmousemove = (e) => {
-    if (!drag) return
-    root.style.left = (e.clientX - ox) + "px"
-    root.style.top = (e.clientY - oy) + "px"
-  }
+    document.addEventListener("mousemove", (e) => {
+        if (!drag) return;
+        root.style.left = `${e.clientX - ox}px`;
+        root.style.top = `${e.clientY - oy}px`;
+    });
 
-  document.onmouseup = () => {
-    drag = false
-    header.style.cursor = "grab"
-  }
+    document.addEventListener("mouseup", () => {
+        drag = false;
+    });
 
-  render()
-})()
+    // Inicia a renderização do menu
+    render();
+})();
