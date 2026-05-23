@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Ghost UI Menu
+// @name         Ghost UI Menu Pro
 // @namespace    https://ghost-ui
-// @version      2.0.0
-// @description  Modular UI Menu
+// @version      3.0.0
+// @description  Modular UI Menu Pro
 // @author       Ghost
 // @match        *://*/*
 // @grant        none
@@ -10,186 +10,288 @@
 // ==/UserScript==
 
 (() => {
-  const root = document.createElement('div')
-  root.id = 'ui'
-
   const state = {
     binds: {},
-    listening: null
+    listening: null,
+    minimized: false,
+    tab: "home"
   }
 
-  const style = document.createElement('style')
+  const root = document.createElement("div")
+  root.id = "ui"
+
+  const style = document.createElement("style")
   style.textContent = `
-    #ui{
-      position:fixed;
-      top:80px;
-      left:80px;
-      width:300px;
-      background:rgba(20,20,28,0.95);
-      border:1px solid rgba(255,255,255,0.08);
-      border-radius:10px;
-      font-family:Arial;
-      color:#fff;
-      z-index:999999;
-      overflow:hidden;
-    }
+  #ui{
+    position:fixed;
+    top:80px;
+    left:80px;
+    width:380px;
+    background:rgba(18,18,26,0.95);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:12px;
+    font-family:Arial;
+    color:#fff;
+    z-index:999999;
+    overflow:hidden;
+    box-shadow:0 10px 40px rgba(0,0,0,0.4);
+    user-select:none;
+  }
 
-    #ui-header{
-      padding:10px;
-      background:linear-gradient(90deg,#6a5acd,#b04cff);
-      font-weight:700;
-      cursor:grab;
-    }
+  #ui-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:10px;
+    background:linear-gradient(90deg,#6a5acd,#b04cff);
+    font-weight:700;
+    cursor:grab;
+  }
 
-    #ui-body{
-      padding:10px;
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-    }
+  #ui-controls{
+    display:flex;
+    gap:6px;
+  }
 
-    .sec{
-      background:rgba(255,255,255,0.04);
-      padding:8px;
-      border-radius:8px;
-    }
+  .ctl{
+    width:18px;
+    height:18px;
+    border-radius:4px;
+    background:rgba(255,255,255,0.2);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:12px;
+    cursor:pointer;
+  }
 
-    .row{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      margin:6px 0;
-      gap:6px;
-    }
+  #ui-body{
+    padding:10px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
 
-    .btn{
-      padding:6px 10px;
-      border:none;
-      border-radius:6px;
-      background:#6a5acd;
-      color:#fff;
-      cursor:pointer;
-      font-size:11px;
-    }
+  #tabs{
+    display:flex;
+    gap:6px;
+  }
 
-    .btn:hover{background:#7b6bff}
+  .tab{
+    flex:1;
+    padding:6px;
+    font-size:11px;
+    background:rgba(255,255,255,0.06);
+    border-radius:6px;
+    cursor:pointer;
+    text-align:center;
+  }
 
-    input[type=range]{
-      width:100%;
-    }
+  .tab.active{
+    background:#6a5acd;
+  }
 
-    .bind{
-      padding:4px 8px;
-      background:rgba(255,255,255,0.08);
-      border-radius:6px;
-      font-size:10px;
-      cursor:pointer;
-      min-width:50px;
-      text-align:center;
-    }
+  .sec{
+    background:rgba(255,255,255,0.04);
+    padding:10px;
+    border-radius:10px;
+  }
 
-    .bind.active{
-      background:#b04cff;
-    }
+  .row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin:8px 0;
+    gap:8px;
+  }
+
+  .btn{
+    padding:7px 10px;
+    border:none;
+    border-radius:6px;
+    background:#6a5acd;
+    color:#fff;
+    cursor:pointer;
+    font-size:11px;
+  }
+
+  .btn:hover{
+    background:#7b6bff;
+  }
+
+  input[type=range]{
+    width:100%;
+  }
+
+  .bind{
+    padding:4px 8px;
+    background:rgba(255,255,255,0.08);
+    border-radius:6px;
+    font-size:10px;
+    cursor:pointer;
+    min-width:55px;
+    text-align:center;
+  }
+
+  .bind.active{
+    background:#b04cff;
+  }
   `
   document.head.appendChild(style)
 
   root.innerHTML = `
-    <div id="ui-header">Ghost UI</div>
-    <div id="ui-body"></div>
+    <div id="ui-header">
+      <div>Ghost UI</div>
+      <div id="ui-controls">
+        <div class="ctl" id="min">-</div>
+        <div class="ctl" id="close">x</div>
+      </div>
+    </div>
+
+    <div id="ui-body">
+      <div id="tabs">
+        <div class="tab active" data-tab="home">Home</div>
+        <div class="tab" data-tab="main">Main</div>
+      </div>
+      <div id="content"></div>
+    </div>
   `
 
   document.body.appendChild(root)
 
-  const body = root.querySelector('#ui-body')
+  const header = root.querySelector("#ui-header")
+  const content = root.querySelector("#content")
 
-  // ======================
-  // HELPERS
-  // ======================
+  const tabs = root.querySelectorAll(".tab")
 
-  const addButton = (text, parent, callback) => {
-    const btn = document.createElement('button')
-    btn.className = 'btn'
-    btn.innerText = text
-    btn.onclick = callback
-    parent.appendChild(btn)
-    return btn
+  const addButton = (text, parent, cb) => {
+    const b = document.createElement("button")
+    b.className = "btn"
+    b.textContent = text
+    b.onclick = cb
+    parent.appendChild(b)
   }
 
-  const addSlider = (label, min, max, value, parent, callback) => {
-    const row = document.createElement('div')
-    row.className = 'row'
+  const addSlider = (label, min, max, value, parent, cb) => {
+    const row = document.createElement("div")
+    row.className = "row"
 
-    const range = document.createElement('input')
-    range.type = 'range'
-    range.min = min
-    range.max = max
-    range.value = value
+    const r = document.createElement("input")
+    r.type = "range"
+    r.min = min
+    r.max = max
+    r.value = value
 
-    const val = document.createElement('span')
-    val.innerText = value
+    const v = document.createElement("span")
+    v.textContent = value
 
-    range.oninput = () => {
-      val.innerText = range.value
-      callback(range.value)
+    r.oninput = () => {
+      v.textContent = r.value
+      cb(r.value)
     }
 
-    row.innerHTML = `<span>${label}</span>`
-    row.appendChild(range)
-    row.appendChild(val)
+    const t = document.createElement("span")
+    t.textContent = label
+
+    row.appendChild(t)
+    row.appendChild(r)
+    row.appendChild(v)
 
     parent.appendChild(row)
   }
 
-  const addBind = (label, key, parent, callback) => {
-    const row = document.createElement('div')
-    row.className = 'row'
+  const addBind = (label, key, parent, cb) => {
+    const row = document.createElement("div")
+    row.className = "row"
 
-    const btn = document.createElement('div')
-    btn.className = 'bind'
-    btn.innerText = state.binds[key] || 'NONE'
+    const b = document.createElement("div")
+    b.className = "bind"
+    b.textContent = state.binds[key] || "NONE"
 
-    btn.onclick = () => {
+    b.onclick = () => {
       state.listening = key
-      btn.classList.add('active')
-      btn.innerText = '...'
+      b.textContent = "..."
+      b.classList.add("active")
     }
 
-    row.innerHTML = `<span>${label}</span>`
-    row.appendChild(btn)
+    row.appendChild(document.createElement("span")).textContent = label
+    row.appendChild(b)
     parent.appendChild(row)
 
-    document.addEventListener('keydown', (e) => {
+    document.addEventListener("keydown", (e) => {
       if (state.listening !== key) return
 
       state.binds[key] = e.code
-      btn.innerText = e.code.replace('Key','')
-      btn.classList.remove('active')
+      b.textContent = e.code.replace("Key", "")
+      b.classList.remove("active")
       state.listening = null
 
-      callback(e.code)
+      cb(e.code)
     })
   }
 
-  // ======================
-  // UI BUILD
-  // ======================
+  const render = () => {
+    content.innerHTML = ""
 
-  const sec1 = document.createElement('div')
-  sec1.className = 'sec'
+    if (state.tab === "home") {
+      const sec = document.createElement("div")
+      sec.className = "sec"
 
-  addButton('Test Button', sec1, () => {
-    console.log('Botão clicado')
+      addButton("Test Button", sec, () => {})
+      addSlider("Speed", 1, 100, 50, sec, () => {})
+      addBind("Auto Action", "auto", sec, () => {})
+
+      content.appendChild(sec)
+    }
+
+    if (state.tab === "main") {
+      const sec = document.createElement("div")
+      sec.className = "sec"
+
+      addButton("Action", sec, () => {})
+      content.appendChild(sec)
+    }
+  }
+
+  tabs.forEach(t => {
+    t.onclick = () => {
+      tabs.forEach(x => x.classList.remove("active"))
+      t.classList.add("active")
+      state.tab = t.dataset.tab
+      render()
+    }
   })
 
-  addSlider('Speed', 1, 100, 50, sec1, (v) => {
-    console.log('Slider:', v)
-  })
+  root.querySelector("#min").onclick = () => {
+    state.minimized = !state.minimized
+    root.querySelector("#ui-body").style.display = state.minimized ? "none" : "block"
+  }
 
-  addBind('Auto Action', 'auto', sec1, (key) => {
-    console.log('Bind setado:', key)
-  })
+  root.querySelector("#close").onclick = () => {
+    root.remove()
+  }
 
-  body.appendChild(sec1)
+  let drag = false
+  let ox = 0
+  let oy = 0
 
+  header.onmousedown = (e) => {
+    drag = true
+    ox = e.clientX - root.offsetLeft
+    oy = e.clientY - root.offsetTop
+    header.style.cursor = "grabbing"
+  }
+
+  document.onmousemove = (e) => {
+    if (!drag) return
+    root.style.left = (e.clientX - ox) + "px"
+    root.style.top = (e.clientY - oy) + "px"
+  }
+
+  document.onmouseup = () => {
+    drag = false
+    header.style.cursor = "grab"
+  }
+
+  render()
 })()
