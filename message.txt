@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         Ghost UI Menu Pro
+// @name         Hacks Menu
 // @namespace    https://ghost-ui
 // @version      3.1.0
 // @description  Modular UI Menu Pro - Edição Ultimate com Minimalismo e Atalho Ç
@@ -366,7 +366,7 @@
     root.id = "ghost-ui-root";
     root.innerHTML = `
         <div id="ui-header">
-            <div>GHOST UI MENU Pro</div>
+            <div>UI HAXCKD</div>
             <div id="ui-controls">
                 <button class="ctl-btn" id="min-btn">−</button>
                 <button class="ctl-btn" id="close-btn">×</button>
@@ -505,6 +505,7 @@
 
     let fpsInterval = null;
     let inspectActive = false;
+    let deleteActive = false;
     let inspectTooltip = null;
 
     // --- Nova Janela para o Executor de Scripts (Executer) ---
@@ -527,10 +528,8 @@
         `;
         document.body.appendChild(execRoot);
 
-        // Ação de fechar o executor
         execRoot.querySelector("#exec-close").onclick = () => execRoot.remove();
 
-        // Ação de rodar o código inserido
         execRoot.querySelector("#exec-run").onclick = () => {
             const code = execRoot.querySelector("#exec-code").value;
             try {
@@ -543,7 +542,6 @@
             }
         };
 
-        // Sistema de arrastar (Drag) exclusivo da janela do Executor
         let exDrag = false, exX = 0, exY = 0;
         execRoot.querySelector("#exec-header").onmousedown = (e) => {
             if (e.target.id === "exec-close") return;
@@ -560,26 +558,99 @@
         document.addEventListener("mouseup", () => exDrag = false);
     };
 
-    // --- Lógica Auxiliar do Inspecionador de Objetos ---
+    // --- Janela de Conexões do Site (IPs e Domínios Ligados) ---
+    const createConnectionsWindow = () => {
+        if (document.getElementById("ghost-conn-root")) return;
+
+        const connRoot = document.createElement("div");
+        connRoot.id = "ghost-conn-root";
+        connRoot.style = "position:fixed; top:200px; left:200px; width:380px; height:300px; background:#0a0a0a; border:1px solid var(--border); border-radius:8px; z-index:9999999; display:flex; flex-direction:column; overflow:hidden; font-family:monospace; box-shadow: 0 25px 50px rgba(0,0,0,0.7);";
+        
+        // Mapeia conexões baseadas nos elementos carregados no DOM (Scripts, Links, iFrames, Performance API)
+        const domains = new Set();
+        domains.add(window.location.hostname + " (Host Principal)");
+        
+        document.querySelectorAll("script[src], link[href], iframe[src], img[src]").forEach(el => {
+            try {
+                const url = new URL(el.src || el.href);
+                domains.add(url.hostname);
+            } catch(e) {}
+        });
+
+        if (window.performance && window.performance.getEntriesByType) {
+            window.performance.getEntriesByType("resource").forEach(res => {
+                try {
+                    const url = new URL(res.name);
+                    domains.add(url.hostname);
+                } catch(e) {}
+            });
+        }
+
+        let domainListHTML = Array.from(domains).map(d => `<div style="padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.02); color:#a3a3a3; font-size:11px;">• ${d}</div>`).join("");
+
+        connRoot.innerHTML = `
+            <div id="conn-header" style="background:rgba(255,255,255,0.02); padding:10px; border-bottom:1px solid var(--border); font-weight:bold; font-size:11px; cursor:grab; display:flex; justify-content:space-between; align-items:center;">
+                <span>SITES E CONEXÕES VINCULADAS</span>
+                <button id="conn-close" style="background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:12px;">×</button>
+            </div>
+            <div style="flex-grow:1; padding:10px; overflow-y:auto; display:flex; flex-direction:column; gap:4px;">
+                ${domainListHTML ? domainListHTML : '<div style="color:var(--text-dim);">Nenhuma conexão externa detectada.</div>'}
+            </div>
+        `;
+        document.body.appendChild(connRoot);
+
+        connRoot.querySelector("#conn-close").onclick = () => connRoot.remove();
+
+        let connDrag = false, connX = 0, connY = 0;
+        connRoot.querySelector("#conn-header").onmousedown = (e) => {
+            if (e.target.id === "conn-close") return;
+            connDrag = true;
+            connX = e.clientX - connRoot.offsetLeft;
+            connY = e.clientY - connRoot.offsetTop;
+        };
+        document.addEventListener("mousemove", (e) => {
+            if (connDrag) {
+                connRoot.style.left = `${e.clientX - connX}px`;
+                connRoot.style.top = `${e.clientY - connY}px`;
+            }
+        });
+        document.addEventListener("mouseup", () => connDrag = false);
+    };
+
+    // --- Lógicas Auxiliares do Inspecionador ---
     const updateInspectTooltip = (e) => {
-        if (!inspectActive || !inspectTooltip) return;
+        if ((!inspectActive && !deleteActive) || !inspectTooltip) return;
         inspectTooltip.style.left = `${e.clientX + 15}px`;
         inspectTooltip.style.top = `${e.clientY + 15}px`;
-        inspectTooltip.textContent = `<${e.target.tagName.toLowerCase()}> ${e.target.id ? '#' + e.target.id : ''}`;
+        
+        if (deleteActive) {
+            inspectTooltip.style.border = "1px solid #ff5555";
+            inspectTooltip.textContent = `[DELETAR] <${e.target.tagName.toLowerCase()}> ${e.target.id ? '#' + e.target.id : ''}`;
+        } else {
+            inspectTooltip.style.border = "1px solid #fff";
+            inspectTooltip.textContent = `<${e.target.tagName.toLowerCase()}> ${e.target.id ? '#' + e.target.id : ''}`;
+        }
     };
 
     const handleInspectClick = (e) => {
-        if (!inspectActive) return;
+        if (!inspectActive && !deleteActive) return;
         e.preventDefault();
         e.stopPropagation();
 
-        // Desativa o inspetor após o clique
-        inspectActive = false;
         if (inspectTooltip) inspectTooltip.remove();
         document.removeEventListener("mousemove", updateInspectTooltip);
         document.removeEventListener("click", handleInspectClick, true);
 
-        // Cria uma caixa para exibir e modificar o código/HTML do objeto clicado
+        // Ação se for Modo Deleção
+        if (deleteActive) {
+            deleteActive = false;
+            e.target.remove();
+            showNotification("Objeto deletado com sucesso!");
+            return;
+        }
+
+        // Ação se for Modo Inspeção Normal
+        inspectActive = false;
         const codeBox = document.createElement("div");
         codeBox.style = "position:fixed; top:20%; left:25%; width:50%; height:50%; background:#0a0a0a; border:1px solid var(--border); border-radius:8px; z-index:10000000; display:flex; flex-direction:column; padding:12px; box-shadow: 0 25px 50px rgba(0,0,0,0.8); font-family:monospace;";
         codeBox.innerHTML = `
@@ -672,6 +743,7 @@
             const secTools = addSection("Ferramentas Pro", content);
 
             addButton("Inspecionar Objeto (Toggle)", secTools, () => {
+                deleteActive = false;
                 if (inspectActive) {
                     inspectActive = false;
                     if (inspectTooltip) inspectTooltip.remove();
@@ -686,7 +758,27 @@
                     
                     document.addEventListener("mousemove", updateInspectTooltip);
                     document.addEventListener("click", handleInspectClick, true);
-                    showNotification("Clique em um elemento para abrir o código!");
+                    showNotification("Clique em um elemento para modificar!");
+                }
+            });
+
+            addButton("Deletar Objeto (Clique)", secTools, () => {
+                inspectActive = false;
+                if (deleteActive) {
+                    deleteActive = false;
+                    if (inspectTooltip) inspectTooltip.remove();
+                    document.removeEventListener("mousemove", updateInspectTooltip);
+                    document.removeEventListener("click", handleInspectClick, true);
+                    showNotification("Modo deleção desativado");
+                } else {
+                    deleteActive = true;
+                    inspectTooltip = document.createElement("div");
+                    inspectTooltip.style = "position:fixed; background:#000; color:#ff5555; border:1px solid #ff5555; padding:4px 8px; font-size:11px; z-index:10000001; pointer-events:none; font-family:monospace; border-radius:4px;";
+                    document.body.appendChild(inspectTooltip);
+
+                    document.addEventListener("mousemove", updateInspectTooltip);
+                    document.addEventListener("click", handleInspectClick, true);
+                    showNotification("Modo Deleção: Próximo clique vai apagar o objeto!");
                 }
             });
 
@@ -695,11 +787,33 @@
                 showNotification("Executer Iniciado");
             });
 
+            addButton("Abrir Terminal / Console Google", secTools, () => {
+                // Tenta chamar os comandos do console padrão e avisa o usuário do atalho físico obrigatório
+                console.clear();
+                console.log("[SYSTEM] Painel DevTools Solicitado.");
+                showNotification("Pressione F12 ou Ctrl+Shift+I para ver o Console Nativo!");
+            });
+
             // --- RECURSOS ÚTEIS ADICIONAIS ---
             const secUtilitarios = addSection("Utilitários", content);
 
+            addButton("Inspecionar Sites Ligados (IPs)", secUtilitarios, () => {
+                createConnectionsWindow();
+                showNotification("Mapeando conexões da página...");
+            });
+
+            addButton("Deletar Cookies do Site", secUtilitarios, () => {
+                const cookies = document.cookie.split(";");
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i];
+                    const eqPos = cookie.indexOf("=");
+                    const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+                    document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+                }
+                showNotification("Todos os cookies limpos!");
+            });
+
             addButton("Forçar Destravar Mouse", secUtilitarios, () => {
-                // Remove o bloqueio de ponteiro (PointerLock) caso o jogo congele sua câmera
                 document.exitPointerLock = document.exitPointerLock || document.mozExitPointerLock || document.webkitExitPointerLock;
                 if (document.exitPointerLock) {
                     document.exitPointerLock();
