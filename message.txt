@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ghost UI Menu Pro
 // @namespace    https://ghost-ui
-// @version      3.0.0
+// @version      4.0.0
 // @description  Modular UI Menu Pro - Edição Ultimate com Auto-Update, Resize e Notificações
 // @author       Ghost
 // @match        *://*/*
@@ -15,7 +15,7 @@
     'use strict';
 
     const UPDATE_URL = "https://raw.githubusercontent.com/Cat558-uz/Bloxd.io-Hack/main/message.txt";
-    const CURRENT_VERSION = "3.0.0";
+    const CURRENT_VERSION = "4.0.0";
 
     // Estado global da interface
     const state = {
