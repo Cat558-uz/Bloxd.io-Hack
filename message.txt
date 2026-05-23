@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ghost UI Menu Pro
 // @namespace    https://ghost-ui
-// @version      4.0.0
+// @version      3.0.0
 // @description  Modular UI Menu Pro - Edição Ultimate com Auto-Update, Resize e Notificações
 // @author       Ghost
 // @match        *://*/*
@@ -15,7 +15,7 @@
     'use strict';
 
     const UPDATE_URL = "https://raw.githubusercontent.com/Cat558-uz/Bloxd.io-Hack/main/message.txt";
-    const CURRENT_VERSION = "4.0.0";
+    const CURRENT_VERSION = "3.0.0";
 
     // Estado global da interface
     const state = {
@@ -357,7 +357,7 @@
     root.id = "ghost-ui-root";
     root.innerHTML = `
         <div id="ui-header">
-            <div>⚙️ Ghost UI Menu Pro</div>
+            <div>Aint Menu | Beta Version</div>
             <div id="ui-controls">
                 <button class="ctl-btn" id="min-btn">−</button>
                 <button class="ctl-btn" id="close-btn">×</button>
@@ -365,8 +365,8 @@
         </div>
         <div id="ui-body">
             <div id="tabs">
-                <div class="tab active" data-tab="home">🏠 Geral</div>
-                <div class="tab" data-tab="main">👁️ Visual</div>
+                <div class="tab active" data-tab="home">📝 Geral</div>
+                <div class="tab" data-tab="main">📍 Visual</div>
             </div>
             <div id="ui-content"></div>
         </div>
@@ -478,6 +478,10 @@
         }
     });
 
+    // Variáveis de controle para os novos recursos
+    let fpsInterval = null;
+    let wasdElement = null;
+
     // --- Renderização Modular da Interface ---
     const render = () => {
         content.innerHTML = "";
@@ -492,6 +496,74 @@
             });
 
             addBind("Macro Instantâneo", "macroKey", secAutomacao, () => {});
+
+            // --- NOVA SEÇÃO: MÉTRICAS E HUD ---
+            const secHUD = addSection("Métricas e HUD", content);
+
+            addButton("Alternar Mostrar FPS", secHUD, (e) => {
+                let fpsBox = document.getElementById("ghost-fps-counter");
+                if (fpsBox) {
+                    clearInterval(fpsInterval);
+                    fpsBox.remove();
+                    showNotification("Contador de FPS desativado.");
+                } else {
+                    // Cria a caixinha de FPS na tela
+                    fpsBox = document.createElement("div");
+                    fpsBox.id = "ghost-fps-counter";
+                    fpsBox.style = "position:fixed; top:10px; right:10px; background:rgba(15,15,22,0.85); border:1px solid var(--border); padding:6px 12px; border-radius:8px; color:#10b981; font-family:monospace; font-weight:bold; z-index:9999998; pointer-events:none; font-size:14px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);";
+                    fpsBox.textContent = "FPS: --";
+                    document.body.appendChild(fpsBox);
+
+                    // Lógica para calcular o FPS
+                    let lastCalledTime;
+                    let counter = 0;
+                    let fpsArr = [];
+
+                    function fpsLoop() {
+                        if (!document.getElementById("ghost-fps-counter")) return;
+                        if (!lastCalledTime) {
+                            lastCalledTime = performance.now();
+                            counter = 0;
+                            requestAnimationFrame(fpsLoop);
+                            return;
+                        }
+                        let delta = (performance.now() - lastCalledTime) / 1000;
+                        lastCalledTime = performance.now();
+                        let currentFps = Math.round(1 / delta);
+                        
+                        counter++;
+                        if (counter % 5 === 0) { // Atualiza o texto a cada 5 frames para não piscar muito rápido
+                            fpsBox.textContent = `FPS: ${currentFps}`;
+                        }
+                        requestAnimationFrame(fpsLoop);
+                    }
+                    requestAnimationFrame(fpsLoop);
+                    showNotification("Contador de FPS ativado!", "success");
+                }
+            });
+
+            addButton("Alternar Mostrar WASD", secHUD, () => {
+                let wasdBox = document.getElementById("ghost-wasd-hud");
+                if (wasdBox) {
+                    wasdBox.remove();
+                    showNotification("HUD WASD desativado.");
+                } else {
+                    // Cria o container do WASD estilo overlay de stream
+                    wasdBox = document.createElement("div");
+                    wasdBox.id = "ghost-wasd-hud";
+                    wasdBox.style = "position:fixed; bottom:20px; left:20px; display:grid; grid-template-columns: repeat(3, 35px); grid-template-rows: repeat(2, 35px); gap:5px; z-index:9999998; pointer-events:none; font-family:monospace; font-weight:bold; text-align:center;";
+                    
+                    // Estrutura das teclas
+                    wasdBox.innerHTML = `
+                        <div></div><div id="wasd-W" style="background:rgba(255,255,255,0.1); border:1px solid var(--border); border-radius:6px; line-height:35px; color:var(--text-dim);">W</div><div></div>
+                        <div id="wasd-A" style="background:rgba(255,255,255,0.1); border:1px solid var(--border); border-radius:6px; line-height:35px; color:var(--text-dim);">A</div>
+                        <div id="wasd-S" style="background:rgba(255,255,255,0.1); border:1px solid var(--border); border-radius:6px; line-height:35px; color:var(--text-dim);">S</div>
+                        <div id="wasd-D" style="background:rgba(255,255,255,0.1); border:1px solid var(--border); border-radius:6px; line-height:35px; color:var(--text-dim);">D</div>
+                    `;
+                    document.body.appendChild(wasdBox);
+                    showNotification("HUD WASD ativado!", "success");
+                }
+            });
 
             const secConfig = addSection("Ajustes Avançados", content);
             addDropdown("Servidor", ["América", "Europa", "Ásia"], "América", secConfig, (sel) => {
@@ -513,6 +585,31 @@
             });
         }
     };
+
+    // --- Sistema de escuta para pintar o HUD WASD na tela em tempo real ---
+    document.addEventListener("keydown", (e) => {
+        const key = e.key.toUpperCase();
+        if (["W", "A", "S", "D"].includes(key)) {
+            const el = document.getElementById(`wasd-${key}`);
+            if (el) {
+                el.style.background = "var(--accent)";
+                el.style.color = "#fff";
+                el.style.boxShadow = "0 0 8px var(--accent)";
+            }
+        }
+    });
+
+    document.addEventListener("keyup", (e) => {
+        const key = e.key.toUpperCase();
+        if (["W", "A", "S", "D"].includes(key)) {
+            const el = document.getElementById(`wasd-${key}`);
+            if (el) {
+                el.style.background = "rgba(255,255,255,0.1)";
+                el.style.color = "var(--text-dim)";
+                el.style.boxShadow = "none";
+            }
+        }
+    });
 
     // --- Lógica de Abas e Janela (Minimizar, Fechar) ---
     tabs.forEach(t => {
