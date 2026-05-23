@@ -3,7 +3,7 @@
 // @namespace    https://bloxd.io
 // @icon         https://i.ibb.co/rfmXMwQz/Click-Helper-Icon.png
 
-// @version      1.5.2.7
+// @version      1.5.2.8
 // @description  Auto Clicker (L/R), Custom CPS, Account Generator, Killaura, Aimbot, BHOP, ViewModel, Player ESP.
 // @author       MakeItOrBreakIt
 // @license      MIT
@@ -264,9 +264,8 @@ setTimeout(checkForUpdates, 3000);
     state.clicker.cpsMin = savedSettings.clicker.cpsMin ?? state.clicker.cpsMin;
     state.clicker.cpsMax = savedSettings.clicker.cpsMax ?? state.clicker.cpsMax;
   }
-  if (savedSettings.movement) state.movement.bhopChance = savedSettings.movement.bhopChance ?? state.movement.bhopChance;
-    if (savedSettings.viewmodel.pos) Object.assign(state.viewmodel.pos, savedSettings.viewmodel.pos);
-    if (savedSettings.viewmodel.rot) Object.assign(state.viewmodel.rot, savedSettings.viewmodel.rot);
+  if (savedSettings.movement)
+  state.movement.bhopChance = savedSettings.movement.bhopChance ?? state.movement.bhopChance;
   }
 
   function saveBinds() {
