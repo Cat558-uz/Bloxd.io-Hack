@@ -2,15 +2,20 @@
 // @name         Ghost UI Menu Pro
 // @namespace    https://ghost-ui
 // @version      3.0.0
-// @description  Modular UI Menu Pro - Versão Premium Fluida com Utilidades
+// @description  Modular UI Menu Pro - Edição Ultimate com Auto-Update, Resize e Notificações
 // @author       Ghost
 // @match        *://*/*
-// @grant        none
+// @grant        GM_xmlhttpRequest
+// @connect      githubusercontent.com
+// @connect      github.com
 // @run-at       document-end
 // ==/UserScript==
 
 (() => {
     'use strict';
+
+    const UPDATE_URL = "https://raw.githubusercontent.com/Cat558-uz/Bloxd.io-Hack/main/message.txt";
+    const CURRENT_VERSION = "3.0.0";
 
     // Estado global da interface
     const state = {
@@ -18,43 +23,47 @@
         listening: null,
         minimized: false,
         tab: "home",
-        bindCallbacks: {}
+        dropdowns: {}
     };
 
-    // Variáveis de controle para as funções dos botões de exemplo
     let clickCount = 0;
 
-    // Injeção de estilos modernos baseados em variáveis CSS e efeitos modernos
+    // --- Sistema de Estilos Premium (Variaveis, Layout e Animações) ---
     const style = document.createElement("style");
     style.textContent = `
         :root {
-            --bg-main: rgba(15, 15, 20, 0.92);
+            --bg-main: rgba(15, 15, 22, 0.95);
             --bg-sec: rgba(255, 255, 255, 0.03);
-            --bg-sec-hover: rgba(255, 255, 255, 0.07);
+            --bg-sec-hover: rgba(255, 255, 255, 0.08);
             --accent: #7c4dff;
             --accent-hover: #9e75ff;
             --border: rgba(255, 255, 255, 0.08);
             --text: #f5f5f7;
             --text-dim: #9898a0;
+            --success: #10b981;
         }
 
         #ghost-ui-root {
             position: fixed;
             top: 100px;
             left: 100px;
-            width: 350px;
+            width: 360px;
+            min-width: 300px;
+            max-width: 600px;
+            min-height: 200px;
             background: var(--bg-main);
             border: 1px solid var(--border);
             border-radius: 16px;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             color: var(--text);
             z-index: 9999999;
             overflow: hidden;
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             user-select: none;
-            transition: opacity 0.2s ease, transform 0.2s ease;
+            display: flex;
+            flex-direction: column;
         }
 
         #ui-header {
@@ -62,20 +71,17 @@
             justify-content: space-between;
             align-items: center;
             padding: 14px 18px;
-            background: rgba(255, 255, 255, 0.02);
+            background: rgba(255, 255, 255, 0.01);
             border-bottom: 1px solid var(--border);
             font-weight: 600;
             font-size: 14px;
-            letter-spacing: 0.5px;
             cursor: grab;
+            flex-shrink: 0;
         }
 
         #ui-header:active { cursor: grabbing; }
 
-        #ui-controls {
-            display: flex;
-            gap: 8px;
-        }
+        #ui-controls { display: flex; gap: 8px; }
 
         .ctl-btn {
             width: 24px;
@@ -92,11 +98,7 @@
             transition: all 0.2s;
         }
 
-        .ctl-btn:hover {
-            background: var(--bg-sec-hover);
-            color: var(--text);
-        }
-
+        .ctl-btn:hover { background: var(--bg-sec-hover); color: var(--text); }
         #close-btn:hover { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
 
         #ui-body {
@@ -104,6 +106,8 @@
             display: flex;
             flex-direction: column;
             gap: 14px;
+            flex-grow: 1;
+            overflow-y: auto;
         }
 
         #tabs {
@@ -112,6 +116,7 @@
             padding: 4px;
             border-radius: 8px;
             border: 1px solid var(--border);
+            flex-shrink: 0;
         }
 
         .tab {
@@ -123,7 +128,11 @@
             border-radius: 6px;
             cursor: pointer;
             text-align: center;
-            transition: all 0.2s ease;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
         }
 
         .tab:hover { color: var(--text); }
@@ -133,16 +142,36 @@
             box-shadow: 0 4px 12px rgba(124, 77, 255, 0.3);
         }
 
-        .sec {
+        #ui-content {
             display: flex;
             flex-direction: column;
             gap: 12px;
-            animation: fadeIn 0.2s ease-in-out;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(4px); }
-            to { opacity: 1; transform: translateY(0); }
+        /* Elemento de Seções Organizadas */
+        .ui-section {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+        }
+
+        .ui-section-title {
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid var(--border);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-dim);
+            font-weight: 700;
+        }
+
+        .ui-section-content {
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
 
         .row {
@@ -150,92 +179,185 @@
             justify-content: space-between;
             align-items: center;
             background: var(--bg-sec);
-            padding: 10px 14px;
-            border-radius: 10px;
-            border: 1px solid var(--border);
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.03);
             gap: 12px;
         }
 
-        .row span { font-size: 13px; font-weight: 500; }
+        .row span { font-size: 13px; }
         .row .val { color: var(--accent); font-weight: 600; font-size: 12px; min-width: 28px; text-align: right;}
 
         .btn {
             width: 100%;
-            padding: 10px;
+            padding: 9px;
             border: none;
-            border-radius: 10px;
+            border-radius: 8px;
             background: var(--accent);
             color: #fff;
             font-weight: 600;
             font-size: 13px;
             cursor: pointer;
             transition: all 0.2s;
-            box-shadow: 0 4px 12px rgba(124, 77, 255, 0.2);
         }
 
-        .btn:hover {
-            background: var(--accent-hover);
-            transform: translateY(-1px);
-        }
+        .btn:hover { background: var(--accent-hover); transform: translateY(-1px); }
         .btn:active { transform: translateY(0); }
+
+        /* Dropdown customizado estilo Pro */
+        .dropdown-container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .dropdown-trigger {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-sec);
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.03);
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .dropdown-trigger:hover { background: var(--bg-sec-hover); }
+
+        .dropdown-menu {
+            display: none;
+            flex-direction: column;
+            background: rgba(10, 10, 15, 0.95);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-top: 4px;
+            overflow: hidden;
+            z-index: 10;
+        }
+
+        .dropdown-menu.open { display: flex; }
+
+        .dropdown-item {
+            padding: 8px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+            color: var(--text-dim);
+        }
+
+        .dropdown-item:hover { background: var(--accent); color: white; }
 
         input[type=range] {
             flex: 1;
             -webkit-appearance: none;
             appearance: none;
             background: rgba(255,255,255,0.1);
-            height: 6px;
-            border-radius: 3px;
+            height: 4px;
+            border-radius: 2px;
             outline: none;
         }
 
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            width: 14px;
-            height: 14px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
             background: var(--accent);
             cursor: pointer;
-            transition: transform 0.1s;
         }
-        input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 
         .bind-btn {
-            padding: 6px 12px;
+            padding: 4px 10px;
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid var(--border);
             border-radius: 6px;
             font-size: 11px;
             font-weight: 600;
-            color: var(--text);
             cursor: pointer;
-            min-width: 65px;
+            min-width: 60px;
             text-align: center;
-            transition: all 0.2s;
         }
 
         .bind-btn.active {
             background: rgba(239, 68, 68, 0.2);
             border-color: #ef4444;
             color: #ef4444;
-            animation: pulse 1s infinite;
         }
 
-        @keyframes pulse {
-            0% { opacity: 0.6; }
-            50% { opacity: 1; }
-            100% { opacity: 0.6; }
+        /* Ícone de Arrastar/Redimensionar no Canto */
+        #ui-resizer {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 14px;
+            height: 14px;
+            cursor: se-resize;
+            background: linear-gradient(135deg, transparent 30%, transparent 50%, var(--text-dim) 50%, transparent 60%, var(--text-dim) 70%);
+            background-size: 4px 4px;
+            border-bottom-right-radius: 16px;
         }
+
+        /* Central de Notificações Visual */
+        #ui-notification-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 10000000;
+            pointer-events: none;
+        }
+
+        .ui-notification {
+            background: rgba(15, 15, 25, 0.96);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--accent);
+            padding: 12px 18px;
+            border-radius: 8px;
+            color: var(--text);
+            font-family: sans-serif;
+            font-size: 13px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transform: translateX(120%);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .ui-notification.show { transform: translateX(0); }
     `;
     document.head.appendChild(style);
 
-    // Estrutura Base do Menu
+    // Container de notificações na tela
+    const notifyContainer = document.createElement("div");
+    notifyContainer.id = "ui-notification-container";
+    document.body.appendChild(notifyContainer);
+
+    const showNotification = (text, type = "info") => {
+        const notif = document.createElement("div");
+        notif.className = "ui-notification";
+        if(type === "success") notif.style.borderLeftColor = "var(--success)";
+        notif.innerHTML = `<span>⚡</span> <span>${text}</span>`;
+        notifyContainer.appendChild(notif);
+        setTimeout(() => notif.classList.add("show"), 50);
+        setTimeout(() => {
+            notif.classList.remove("show");
+            setTimeout(() => notif.remove(), 300);
+        }, 3000);
+    };
+
+    // Montando Estrutura Principal
     const root = document.createElement("div");
     root.id = "ghost-ui-root";
     root.innerHTML = `
         <div id="ui-header">
-            <div>Ghost UI Menu Pro</div>
+            <div>⚙️ Ghost UI Menu Pro</div>
             <div id="ui-controls">
                 <button class="ctl-btn" id="min-btn">−</button>
                 <button class="ctl-btn" id="close-btn">×</button>
@@ -243,19 +365,31 @@
         </div>
         <div id="ui-body">
             <div id="tabs">
-                <div class="tab active" data-tab="home">Geral</div>
-                <div class="tab" data-tab="main">Exibição</div>
+                <div class="tab active" data-tab="home">🏠 Geral</div>
+                <div class="tab" data-tab="main">👁️ Visual</div>
             </div>
-            <div id="content"></div>
+            <div id="ui-content"></div>
         </div>
+        <div id="ui-resizer"></div>
     `;
     document.body.appendChild(root);
 
     const header = root.querySelector("#ui-header");
-    const content = root.querySelector("#content");
+    const content = root.querySelector("#ui-content");
     const tabs = root.querySelectorAll(".tab");
 
-    // --- Builders de Elementos Reutilizáveis ---
+    // --- Componentes Avançados e Reutilizáveis ---
+
+    const addSection = (title, parent) => {
+        const sec = document.createElement("div");
+        sec.className = "ui-section";
+        sec.innerHTML = `<div class="ui-section-title">${title}</div>`;
+        const body = document.createElement("div");
+        body.className = "ui-section-content";
+        sec.appendChild(body);
+        parent.appendChild(sec);
+        return body;
+    };
 
     const addButton = (text, parent, cb) => {
         const b = document.createElement("button");
@@ -268,115 +402,119 @@
     const addSlider = (label, min, max, value, parent, cb) => {
         const row = document.createElement("div");
         row.className = "row";
-
-        const labelSpan = document.createElement("span");
-        labelSpan.textContent = label;
-
+        row.innerHTML = `<span>${label}</span>`;
         const r = document.createElement("input");
-        r.type = "range";
-        r.min = min;
-        r.max = max;
-        r.value = value;
-
+        r.type = "range"; r.min = min; r.max = max; r.value = value;
         const v = document.createElement("span");
-        v.className = "val";
-        v.textContent = value;
-
-        r.oninput = () => {
-            v.textContent = r.value;
-            cb(r.value);
-        };
-
-        row.appendChild(labelSpan);
+        v.className = "val"; v.textContent = value;
+        r.oninput = () => { v.textContent = r.value; cb(r.value); };
         row.appendChild(r);
         row.appendChild(v);
         parent.appendChild(row);
     };
 
+    const addDropdown = (label, options, selectedValue, parent, cb) => {
+        const container = document.createElement("div");
+        container.className = "dropdown-container";
+        
+        const trigger = document.createElement("div");
+        trigger.className = "dropdown-trigger";
+        trigger.innerHTML = `<span>${label}: <b>${selectedValue}</b></span><span>▼</span>`;
+        
+        const menu = document.createElement("div");
+        menu.className = `dropdown-menu`;
+
+        options.forEach(opt => {
+            const item = document.createElement("div");
+            item.className = "dropdown-item";
+            item.textContent = opt;
+            item.onclick = (e) => {
+                e.stopPropagation();
+                trigger.querySelector("b").textContent = opt;
+                menu.classList.remove("open");
+                cb(opt);
+            };
+            menu.appendChild(item);
+        });
+
+        trigger.onclick = (e) => {
+            e.stopPropagation();
+            menu.classList.toggle("open");
+        };
+
+        document.addEventListener("click", () => menu.classList.remove("open"));
+
+        container.appendChild(trigger);
+        container.appendChild(menu);
+        parent.appendChild(container);
+    };
+
     const addBind = (label, key, parent, cb) => {
         const row = document.createElement("div");
         row.className = "row";
-
-        const labelSpan = document.createElement("span");
-        labelSpan.textContent = label;
-
+        row.innerHTML = `<span>${label}</span>`;
         const b = document.createElement("div");
         b.className = `bind-btn ${state.listening === key ? 'active' : ''}`;
-        
-        let displayKey = state.binds[key] ? state.binds[key].replace("Key", "") : "NENHUM";
-        b.textContent = state.listening === key ? "..." : displayKey;
+        b.textContent = state.binds[key] ? state.binds[key].replace("Key", "") : "NENHUM";
 
         b.onclick = (e) => {
             e.stopPropagation();
             state.listening = key;
-            render();
+            b.textContent = "...";
+            b.classList.add("active");
         };
 
-        state.bindCallbacks[key] = cb;
-
-        row.appendChild(labelSpan);
         row.appendChild(b);
         parent.appendChild(row);
     };
 
-    // --- Sistema Único de Eventos de Teclado (Consertado) ---
+    // --- Processador Universal de Teclas ---
     document.addEventListener("keydown", (e) => {
-        // Modo Captura de Tecla (Configurando Atalho)
         if (state.listening) {
-            const key = state.listening;
-            state.binds[key] = e.code;
+            state.binds[state.listening] = e.code;
+            showNotification(`Atalho definido: ${e.code.replace("Key", "")}`, "success");
             state.listening = null;
             render();
-            return;
-        }
-
-        // Modo Execução (Dispara ações se a tecla salva for clicada)
-        if (state.binds["alertBind"] && e.code === state.binds["alertBind"]) {
-            alert("Atalho executado com sucesso no Ghost UI!");
         }
     });
 
-    // --- Renderização Dinâmica das Abas e Recursos ---
+    // --- Renderização Modular da Interface ---
     const render = () => {
         content.innerHTML = "";
-        const sec = document.createElement("div");
-        sec.className = "sec";
 
-        // ABA 1: GERAL (Automação e Ferramentas)
         if (state.tab === "home") {
-            // Botão interativo para contar cliques com estado dinâmico
-            addButton(`Contador de Cliques: ${clickCount}`, sec, (e) => {
+            const secAutomacao = addSection("Automação Principal", content);
+            
+            addButton(`Contador Interno: ${clickCount}`, secAutomacao, (e) => {
                 clickCount++;
-                e.target.textContent = `Contador de Cliques: ${clickCount}`;
+                e.target.textContent = `Contador Interno: ${clickCount}`;
+                showNotification(`Cliques registrados: ${clickCount}`);
             });
 
-            // Controle deslizante para alterar a opacidade do próprio painel
-            addSlider("Opacidade Menu", 20, 100, 92, sec, (val) => {
-                root.style.setProperty('--bg-main', `rgba(15, 15, 20, ${val / 100})`);
-            });
+            addBind("Macro Instantâneo", "macroKey", secAutomacao, () => {});
 
-            // Atalho de teclado configurável para disparar um alerta em segundo plano
-            addBind("Mensagem de Alerta", "alertBind", sec, () => {});
+            const secConfig = addSection("Ajustes Avançados", content);
+            addDropdown("Servidor", ["América", "Europa", "Ásia"], "América", secConfig, (sel) => {
+                showNotification(`Servidor alterado para: ${sel}`, "success");
+            });
         }
 
-        // ABA 2: EXIBIÇÃO (Customizações visuais da página web ativa)
         if (state.tab === "main") {
-            // Botão que inverte os filtros cromáticos do site (Modo Escuro Forçado rápido)
-            addButton("Alternar Modo Negativo", sec, () => {
+            const secFiltros = addSection("Controle de Tela", content);
+            
+            addButton("Inverter Cromatização (Modo Dark)", secFiltros, () => {
                 const html = document.documentElement;
                 html.style.filter = html.style.filter === "invert(1)" ? "none" : "invert(1)";
+                showNotification("Filtro de visualização alterado!");
             });
 
-            // Controle deslizante que manipula o tamanho das fontes do site em tempo real
-            addSlider("Tamanho da Letra", 12, 26, 16, sec, (val) => {
-                document.body.style.fontSize = `${val}px`;
+            addSlider("Opacidade Menu", 30, 100, 95, secFiltros, (val) => {
+                root.style.setProperty('--bg-main', `rgba(15, 15, 22, ${val / 100})`);
             });
         }
-
-        content.appendChild(sec);
     };
 
-    // --- Handlers de Controle Superior e Navegação ---
+    // --- Lógica de Abas e Janela (Minimizar, Fechar) ---
     tabs.forEach(t => {
         t.onclick = () => {
             tabs.forEach(x => x.classList.remove("active"));
@@ -394,30 +532,57 @@
 
     root.querySelector("#close-btn").onclick = () => {
         root.style.opacity = "0";
-        root.style.transform = "translateY(12px)";
+        root.style.transform = "translateY(15px)";
         setTimeout(() => root.remove(), 200);
     };
 
-    // --- Sistema de Arrastar Corrigido (Sem conflito com botões) ---
+    // --- Sistema Fluido de Arrastar (Drag) ---
     let drag = false, ox = 0, oy = 0;
-
     header.onmousedown = (e) => {
         if (e.target.classList.contains('ctl-btn')) return;
         drag = true;
         ox = e.clientX - root.offsetLeft;
         oy = e.clientY - root.offsetTop;
     };
+    document.addEventListener("mousemove", (e) => { if (drag) { root.style.left = `${e.clientX - ox}px`; root.style.top = `${e.clientY - oy}px`; } });
+    document.addEventListener("mouseup", () => drag = false);
 
+    // --- Sistema Fluido de Redimensionamento (Resize) ---
+    let resizing = false, startW = 0, startH = 0, startX = 0, startY = 0;
+    root.querySelector("#ui-resizer").onmousedown = (e) => {
+        e.preventDefault(); e.stopPropagation();
+        resizing = true;
+        startW = root.clientWidth; startH = root.clientHeight;
+        startX = e.clientX; startY = e.clientY;
+    };
     document.addEventListener("mousemove", (e) => {
-        if (!drag) return;
-        root.style.left = `${e.clientX - ox}px`;
-        root.style.top = `${e.clientY - oy}px`;
+        if (!resizing) return;
+        root.style.width = `${startW + (e.clientX - startX)}px`;
+        root.style.height = `${startH + (e.clientY - startY)}px`;
     });
+    document.addEventListener("mouseup", () => resizing = false);
 
-    document.addEventListener("mouseup", () => {
-        drag = false;
-    });
+    // --- Atualizador Automático via GitHub ---
+    const checkUpdates = () => {
+        if (typeof GM_xmlhttpRequest === "undefined") return;
+        
+        GM_xmlhttpRequest({
+            method: "GET",
+            url: UPDATE_URL,
+            onload: (res) => {
+                // Filtra os números de versão presentes no arquivo remoto
+                const match = res.responseText.match(/version\s*([\d.]+)/i);
+                if (match && match[1]) {
+                    const remoteVersion = match[1].trim();
+                    if (remoteVersion !== CURRENT_VERSION) {
+                        showNotification(`Nova versão disponível: v${remoteVersion}! Altere no seu gerenciador.`, "success");
+                    }
+                }
+            }
+        });
+    };
 
-    // Inicia a renderização do menu
+    // Inicialização completa
     render();
+    checkUpdates();
 })();
